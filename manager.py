@@ -18,7 +18,7 @@ class KerasManager(tf.keras.utils.Sequence):
         dataset,
         label_amount=3,
         sample_weight=None,
-        normalize=False,
+        normalize=True,
     ):
         self.batch_size = batch_size
         self.image_size = image_size

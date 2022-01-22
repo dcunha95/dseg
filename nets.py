@@ -139,7 +139,9 @@ def unet_4(
         # conv, bn, relu
         if node_type == 4:
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(x)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
@@ -305,7 +307,9 @@ def unet_5(
         # conv, bn, relu
         if node_type == 4:
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(x)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
@@ -478,7 +482,9 @@ def unet_6(
         # conv, bn, relu
         if node_type == 4:
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(x)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
@@ -669,7 +675,9 @@ def unet_pp_10(
         # conv, bn, relu
         if node_type == 4:
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(x)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
@@ -677,12 +685,16 @@ def unet_pp_10(
         # (conv, bn, relu)x2
         if node_type == 5:
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(x)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(node)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
@@ -758,7 +770,9 @@ def unet_pp_10(
     x05 = ly.concatenate([x00, x01, x02, x03, x04, ly.UpSampling2D(2)(x14)])
     x05 = base_node(x05, 0)
     # x06
-    x06 = ly.concatenate([x00, x01, x02, x03, x04, x05, ly.UpSampling2D(2)(x14)])
+    x06 = ly.concatenate(
+        [x00, x01, x02, x03, x04, x05, ly.UpSampling2D(2)(x14)]
+    )
     x06 = base_node(x06, 0)
 
     outputs = ly.Conv2D(
@@ -906,7 +920,9 @@ def unet_11(
         # conv, bn, relu
         if node_type == 4:
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(x)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
@@ -914,12 +930,16 @@ def unet_11(
         # (conv, bn, relu)x2
         if node_type == 5:
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(x)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
             node = ly.Conv2D(
-                filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+                filters=b_fil * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
             )(node)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
@@ -934,7 +954,9 @@ def unet_11(
         x = ly.MaxPool2D(pool_size=2, padding="same")(nodes[k][-1])
 
     for k in range(depth - 2, -1, -1):
-        x = ly.concatenate([nodes[k][-1], ly.UpSampling2D(2)(nodes[k + 1][-1])])
+        x = ly.concatenate(
+            [nodes[k][-1], ly.UpSampling2D(2)(nodes[k + 1][-1])]
+        )
         nodes[k].append(base_node(x, k))
 
     outputs = ly.Conv2D(
@@ -1227,6 +1249,19 @@ def get_base(
         node = ly.BatchNormalization()(node)
         node = ly.Activation("relu")(node)
 
+    if node_type == 6:
+        x = ly.Conv2D(
+            filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+        )(inputs)
+        node = ly.Conv2D(
+            filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+        )(x)
+        node = ly.Activation("relu")(node)
+        node = ly.Conv2D(
+            filters=b_fil * 2 ** level, kernel_size=kernel_size, padding="same"
+        )(node)
+        node = ly.Add()([node, x])
+
     outputs = node
 
     model = tf.keras.Model(inputs, outputs, name=name)
@@ -1279,7 +1314,9 @@ def unet_12(
     for k in range(depth - 2, -1, -1):
         # print(k)
         name = "bm_" + str(k) + "_1"
-        x = ly.concatenate([nodes[k][-1], ly.UpSampling2D(2)(nodes[k + 1][-1])])
+        x = ly.concatenate(
+            [nodes[k][-1], ly.UpSampling2D(2)(nodes[k + 1][-1])]
+        )
 
         node = get_base(
             input_shape=x.shape[1:],

@@ -31,6 +31,80 @@ class Segmenter:
         self.tst_dataset = None
         self.stt_dataset = None
 
+        self.trn_gen = None
+        self.val_gen = None
+        self.tst_gen = None
+        self.stt_gen = None
+
+        self.history = None
+        self.callbacks = None
+        self.model = None
+
+        self.epoch_results = None
+
+        #### create folder and update model name
+        k = 0
+        self.model_name = self.model_name + "_" + str(k)
+        while os.path.exists(self.model_name):
+            k += 1
+            n = [i + "_" for i in self.model_name.split(sep="_")[:-1]]
+            name = ""
+            for i in n:
+                name += i
+            self.model_name = name + str(k)
+
+        os.makedirs(self.model_name)
+        ####
+
+        self.iou_list = None
+
+    def get_ds(self, ds):
+        self.trn_dataset = ds[0]
+        self.val_dataset = ds[1]
+        self.tst_dataset = ds[2]
+        self.stt_dataset = ds[3]
+
+        min_bs = min(
+            len(ds[0]),
+            len(ds[1]),
+            len(ds[2]),
+            len(ds[3]),
+            self.setup.batch_size,
+        )
+
+        if min_bs != self.setup.batch_size:
+            self.setup.batch_size = min_bs
+            print(
+                "batch_size too big, changing to ",
+                min_bs,
+                sep="",
+            )
+
+        self.trn_gen = man.KerasManager(
+            self.setup.batch_size,
+            self.setup.image_size,
+            self.trn_dataset,
+        )
+
+        self.val_gen = man.KerasManager(
+            self.setup.batch_size,
+            self.setup.image_size,
+            self.val_dataset,
+        )
+
+        self.tst_gen = man.KerasManager(
+            self.setup.batch_size,
+            self.setup.image_size,
+            self.val_dataset,
+        )
+
+        self.stt_gen = man.KerasManager(
+            10,
+            self.setup.image_size,
+            self.stt_dataset,
+        )
+
+    def compile(self):
         if self.setup.model_type == "unet":
             self.model = nets.unet_12(
                 input_shape=self.setup.input_shape,
@@ -57,26 +131,23 @@ class Segmenter:
                 concat_all=self.setup.concat_all,
             )
 
+        if self.setup.model_type == "old_unet":
+            self.model = nets.unet_4(
+                input_shape=self.setup.input_shape,
+                b_fil=self.setup.b_fil,
+                kernel_size=self.setup.kernel_size,
+                dropout_amount=self.setup.dropout_amount,
+                label_amount=3,
+                node_type=4,
+                use_bn=self.setup.use_bn,
+            )
+
         self.model.compile(
             optimizer=self.setup.optimizer,
             loss=self.setup.loss,
             metrics=[tf.keras.metrics.MeanIoU(num_classes=3)],
+            # run_eagerly=True,
         )
-
-        #### create folder and update model name
-        k = 0
-        self.model_name = self.model_name + "_" + str(k)
-        while os.path.exists(self.model_name) == True:
-            k += 1
-            n = [i + "_" for i in self.model_name.split(sep="_")[:-1]]
-            name = ""
-            for i in n:
-                name += i
-            self.model_name = name + str(k)
-
-        os.makedirs(self.model_name)
-        ####
-
         self.callbacks = [
             tf.keras.callbacks.ModelCheckpoint(
                 self.model_name + "/model.h5",
@@ -85,40 +156,7 @@ class Segmenter:
             ),
         ]
 
-        self.iou_list = None
-
-    def get_ds(self, ds):
-        self.trn_dataset = ds[0]
-        self.val_dataset = ds[1]
-        self.tst_dataset = ds[2]
-        self.stt_dataset = ds[3]
-
-        self.trn_gen = man.KerasManager(
-            self.setup.batch_size,
-            self.setup.image_size,
-            self.trn_dataset,
-        )
-
-        self.val_gen = man.KerasManager(
-            self.setup.batch_size,
-            self.setup.image_size,
-            self.val_dataset,
-        )
-
-        self.tst_gen = man.KerasManager(
-            self.setup.batch_size,
-            self.setup.image_size,
-            self.val_dataset,
-        )
-
-        self.stt_gen = man.KerasManager(
-            10,
-            self.setup.image_size,
-            self.stt_dataset,
-        )
-
     def fit(self):
-
         self.history = self.model.fit(
             self.trn_gen,
             epochs=self.setup.epochs,
@@ -130,66 +168,71 @@ class Segmenter:
 
     def plot_model(
         self,
-        save=True,
         show_shapes=False,
         show_dtype=False,
         show_layer_names=True,
         rankdir="TB",
-        expand_nested=False,
-        subgraph=False,
     ):
 
-        # plot = Image(
-        #     tf.keras.utils.model_to_dot(
-        #         self.model,
-        #         show_shapes=show_shapes,
-        #         show_dtype=show_dtype,
-        #         show_layer_names=show_layer_names,
-        #         rankdir=rankdir,
-        #         expand_nested=expand_nested,
-        #         dpi=96,
-        #         subgraph=False,
-        #     ).create_png()
-        # )
+        tf.keras.utils.plot_model(
+            model=self.model,
+            to_file=self.model_name + "/model_expanded.png",
+            show_shapes=show_shapes,
+            rankdir=rankdir,
+            show_layer_names=show_layer_names,
+            show_dtype=show_dtype,
+            expand_nested=True,
+            dpi=96,
+        )
 
-        if save:
-            tf.keras.utils.plot_model(
-                model=self.model,
-                to_file=self.model_name + "/model_expanded.png",
-                show_shapes=show_shapes,
-                rankdir=rankdir,
-                show_layer_names=show_layer_names,
-                show_dtype=show_dtype,
-                expand_nested=True,
-                dpi=192,
-            )
+        tf.keras.utils.plot_model(
+            model=self.model,
+            to_file=self.model_name + "/model.png",
+            show_shapes=show_shapes,
+            rankdir=rankdir,
+            show_layer_names=show_layer_names,
+            show_dtype=show_dtype,
+            expand_nested=False,
+            dpi=96,
+        )
 
-            tf.keras.utils.plot_model(
-                model=self.model,
-                to_file=self.model_name + "/model.png",
-                show_shapes=show_shapes,
-                rankdir=rankdir,
-                show_layer_names=show_layer_names,
-                show_dtype=show_dtype,
-                expand_nested=False,
-                dpi=192,
-            )
+        bmodel = nets.get_base(
+            input_shape=self.setup.input_shape,
+            level=0,
+            b_fil=self.setup.b_fil,
+            kernel_size=self.setup.kernel_size,
+            dropout_amount=self.setup.dropout_amount,
+            node_type=self.setup.node_type,
+            use_bn=self.setup.use_bn,
+            name="bm",
+        )
 
-        # return plot
+        tf.keras.utils.plot_model(
+            model=bmodel,
+            to_file=self.model_name + "/model_base.png",
+            show_shapes=show_shapes,
+            rankdir=rankdir,
+            show_layer_names=show_layer_names,
+            show_dtype=show_dtype,
+            expand_nested=True,
+            dpi=192,
+        )
+
+    # return plot
 
     def analisys(self, preds_amount=None, bad_preds_amount=None):
 
-        if preds_amount == None:
+        if preds_amount is None:
             preds_amount = self.setup.preds_amount
 
-        if bad_preds_amount == None:
+        if bad_preds_amount is None:
             bad_preds_amount = self.setup.bad_preds_amount
 
         print("\n\nEvaluating model " + self.model_name + ":\n\n")
         results = self.model.evaluate(self.tst_gen)
         print("\nEvaluation results:", results)
 
-        self.epochs = vis.plot_training(self.history, self.model_name)
+        self.epoch_results = vis.plot_training(self.history, self.model_name)
 
         print("\n\nRetrieving model statistics:\n\n")
 
@@ -199,9 +242,15 @@ class Segmenter:
             dataset=self.stt_dataset,
         )
 
-        self.data, self.data_info = vis.get_statistics(self.iou_list, self.model_name)
+        self.data, self.data_info = vis.get_statistics(
+            self.iou_list, self.model_name
+        )
 
-        self.data_pretty, self.data_info_pretty, data_sorted = vis.format_table(
+        (
+            self.data_pretty,
+            self.data_info_pretty,
+            data_sorted,
+        ) = vis.format_table(
             self.data,
             self.data_info,
             self.stt_dataset,
@@ -235,5 +284,4 @@ class Segmenter:
         )
 
     def save(self):
-
         pass

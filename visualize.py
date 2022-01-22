@@ -17,14 +17,228 @@ import dseg.manager as man
 
 sns.set_theme(style="whitegrid")
 
+
+class QualityAssurance:
+    @staticmethod
+    def get_iou(y_pred, y_true):
+        "Returns IoU (Jaccard Index)"
+        inter = np.count_nonzero(
+            np.logical_and(y_pred, y_true).astype("uint8")
+        )
+        union = np.count_nonzero(np.logical_or(y_pred, y_true).astype("uint8"))
+        return inter / union
+
+    @staticmethod
+    def save_stats(prediction, target_img_path, use_original=False):
+        """Take quality metrics from a prediction"""
+
+        pred = np.argmax(prediction, axis=-1)
+
+        if use_original:
+            gt = tf.keras.preprocessing.image.load_img(
+                target_img_path,
+                color_mode="grayscale",
+            )
+            pred = tf.keras.preprocessing.image.array_to_img(
+                np.expand_dims(pred, axis=-1)
+            )
+            pred = pred.resize((500, 500))
+            pred = tf.keras.preprocessing.image.img_to_array(pred)
+            pred = np.squeeze(pred)
+        else:
+            gt = tf.keras.preprocessing.image.load_img(
+                target_img_path,
+                color_mode="grayscale",
+                target_size=prediction.shape[:-1],
+                interpolation="nearest",
+            )
+        gt = tf.keras.preprocessing.image.img_to_array(gt, dtype="uint8")
+        gt = np.squeeze(gt)
+
+        # separando cada classe
+        pred_e = (pred == 0).astype("uint8")
+        pred_l = (pred == 1).astype("uint8")
+        pred_p = (pred == 2).astype("uint8")
+        pred_v = pred_l + pred_p
+
+        gt_e = (gt == 0).astype("uint8")
+        gt_l = (gt == 100).astype("uint8")
+        gt_p = (gt == 255).astype("uint8")
+        gt_v = gt_l + gt_p
+
+        # area
+        tot_area = prediction.shape[0] ** 2
+
+        area_pred_l = np.count_nonzero(pred_l) / tot_area
+        area_pred_p = np.count_nonzero(pred_p) / tot_area
+        area_pred_v = np.count_nonzero(pred_v) / tot_area
+
+        area_gt_l = np.count_nonzero(gt_l) / tot_area
+        area_gt_p = np.count_nonzero(gt_p) / tot_area
+        area_gt_v = np.count_nonzero(gt_v) / tot_area
+
+        # error_area_l = area_pred_l - area_gt_l
+        # error_area_p = area_pred_p - area_gt_p
+        # error_area_v = area_pred_v - area_gt_v
+
+        # calculando os IoUs
+
+        # iou do externo, lumen, placa e vaso
+        # (vaso = lumen + placa)
+        iou_e = get_iou(pred_e, gt_e)
+        iou_l = get_iou(pred_l, gt_l)
+        iou_p = get_iou(pred_p, gt_p)
+        iou_v = get_iou(pred_v, gt_v)
+
+        # iou médio entre placa e lumen
+        iou_avg = (iou_l + iou_p) / 2
+
+        iou = [
+            iou_avg,
+            iou_e,
+            iou_l,
+            iou_p,
+            iou_v,
+            area_pred_l,
+            area_gt_l,
+            area_pred_p,
+            area_gt_p,
+            area_pred_v,
+            area_gt_v,
+        ]
+
+        return iou
+
+    @staticmethod
+    def retrieve_stats(
+        model,
+        stat_gen,
+        dataset,
+        verbose=1,
+    ):
+        """Retrieve quality statistics based on stat dataset"""
+        loops = stat_gen.__len__() + 1
+
+        # initialize the array that will hold metrics information
+        stats_list = [None for k in range(len(dataset))]
+
+        for i in range(loops):
+
+            if verbose == 1:
+                print(str(i + 1) + " / " + str(loops))
+            batch = stat_gen.__getitem__(i)[0]
+
+            # if on last loop, not all batchs might be full
+            if i == loops - 1:
+                batch = batch[
+                    : (len(dataset) - stat_gen.batch_size * stat_gen.__len__())
+                ]
+            preds = model.predict_on_batch(batch)
+
+            # calculate base position on arrays
+            base_j = i * stat_gen.batch_size
+
+            for j in range(len(preds)):
+
+                stats_list[j + base_j] = save_stats(
+                    preds[j], dataset.mask_path.iloc[j + base_j]
+                )
+        return stats_list
+
+
+class VisualizerAssist:
+    @staticmethod
+    def pred_name(data, j, base_j, name_format=["Average", "Name"]):
+        """Returns a name prediction."""
+        name = ""
+
+        for i in name_format:
+            name += data.iloc[j + base_j][i] + "_"
+        name += str(data.index[base_j + j])
+        name = name.replace(".", "")
+
+        return name
+
+    @staticmethod
+    def save_output(
+        name,
+        pred,
+        input_img_path,
+        target_img_path,
+        save_folder,
+        print_options=[True, True, True, True, True, True],
+    ):
+
+        if print_options[0]:
+            img = PIL.ImageOps.autocontrast(
+                tf.keras.preprocessing.image.array_to_img(pred)
+            )
+            img.save(
+                save_folder + "/predictions" + "/" + name + "_raw.png",
+                format="png",
+            )
+        if print_options[1]:
+            img = np.array(np.argmax(pred, axis=-1), dtype="uint8")
+            img = np.expand_dims(
+                (img == 1).astype("uint8") * 100
+                + (img == 2).astype("uint8") * 255,
+                axis=-1,
+            )
+            img = tf.keras.preprocessing.image.array_to_img(img, scale=False)
+            img.save(
+                save_folder + "/predictions" + "/" + name + "_output.png",
+                format="png",
+            )
+        if print_options[2]:
+            img = tf.keras.preprocessing.image.load_img(
+                input_img_path,
+                color_mode="grayscale",
+                target_size=pred.shape,
+                interpolation="nearest",
+            )
+            img.save(
+                save_folder + "/predictions" + "/" + name + "_input.png",
+                format="png",
+            )
+        if print_options[3]:
+            img = tf.keras.preprocessing.image.load_img(input_img_path)
+            img.save(
+                save_folder
+                + "/predictions"
+                + "/"
+                + name
+                + "_input_original.png",
+                format="png",
+            )
+        if print_options[4]:
+            img = tf.keras.preprocessing.image.load_img(
+                target_img_path,
+                color_mode="grayscale",
+                target_size=pred.shape,
+                interpolation="nearest",
+            )
+            img.save(
+                save_folder + "/predictions" + "/" + name + "_gt.png",
+                format="png",
+            )
+        if print_options[5]:
+            img = tf.keras.preprocessing.image.load_img(target_img_path)
+            img.save(
+                save_folder + "/predictions" + "/" + name + "_gt_original.png",
+                format="png",
+            )
+        return
+
+
+# %%
+
 # define prediction file name
 def pred_name(data, j, base_j, name_format=["Average", "Name"]):
-
     name = ""
 
     for i in name_format:
         name += data.iloc[j + base_j][i] + "_"
-    name += str(data.index[base_j+j])
+    name += str(data.index[base_j + j])
     name = name.replace(".", "")
 
     return name
@@ -39,24 +253,27 @@ def save_output(
     save_folder,
     print_options=[True, True, True, True, True, True],
 ):
-
-    if print_options[0] == True:
-        img = PIL.ImageOps.autocontrast(tf.keras.preprocessing.image.array_to_img(pred))
+    if print_options[0]:
+        img = PIL.ImageOps.autocontrast(
+            tf.keras.preprocessing.image.array_to_img(pred)
+        )
         img.save(
             save_folder + "/predictions" + "/" + name + "_raw.png",
             format="png",
         )
-    if print_options[1] == True:
+    if print_options[1]:
         img = np.array(np.argmax(pred, axis=-1), dtype="uint8")
         img = np.expand_dims(
-            (img == 1).astype("uint8") * 100 + (img == 2).astype("uint8") * 255, axis=-1
+            (img == 1).astype("uint8") * 100
+            + (img == 2).astype("uint8") * 255,
+            axis=-1,
         )
         img = tf.keras.preprocessing.image.array_to_img(img, scale=False)
         img.save(
             save_folder + "/predictions" + "/" + name + "_output.png",
             format="png",
         )
-    if print_options[2] == True:
+    if print_options[2]:
         img = tf.keras.preprocessing.image.load_img(
             input_img_path,
             color_mode="grayscale",
@@ -67,13 +284,13 @@ def save_output(
             save_folder + "/predictions" + "/" + name + "_input.png",
             format="png",
         )
-    if print_options[3] == True:
+    if print_options[3]:
         img = tf.keras.preprocessing.image.load_img(input_img_path)
         img.save(
             save_folder + "/predictions" + "/" + name + "_input_original.png",
             format="png",
         )
-    if print_options[4] == True:
+    if print_options[4]:
         img = tf.keras.preprocessing.image.load_img(
             target_img_path,
             color_mode="grayscale",
@@ -84,7 +301,7 @@ def save_output(
             save_folder + "/predictions" + "/" + name + "_gt.png",
             format="png",
         )
-    if print_options[5] == True:
+    if print_options[5]:
         img = tf.keras.preprocessing.image.load_img(target_img_path)
         img.save(
             save_folder + "/predictions" + "/" + name + "_gt_original.png",
@@ -101,7 +318,6 @@ def get_iou(y_pred, y_true):
 
 # take statistics from prediction
 def save_stats(prediction, target_img_path, use_original=False):
-
     # tomando a predicao e a ground truth
     pred = np.argmax(prediction, axis=-1)
 
@@ -110,7 +326,9 @@ def save_stats(prediction, target_img_path, use_original=False):
             target_img_path,
             color_mode="grayscale",
         )
-        pred = tf.keras.preprocessing.image.array_to_img(np.expand_dims(pred, axis=-1))
+        pred = tf.keras.preprocessing.image.array_to_img(
+            np.expand_dims(pred, axis=-1)
+        )
         pred = pred.resize((500, 500))
         pred = tf.keras.preprocessing.image.img_to_array(pred)
         pred = np.squeeze(pred)
@@ -185,7 +403,6 @@ def retrieve_stats(
     dataset,
     verbose=1,
 ):
-
     loops = stat_gen.__len__() + 1
 
     # initialize the array that will hold iou information
@@ -199,7 +416,9 @@ def retrieve_stats(
 
         # if on last loop, not all batchs might be full
         if i == loops - 1:
-            batch = batch[: (len(dataset) - stat_gen.batch_size * stat_gen.__len__())]
+            batch = batch[
+                : (len(dataset) - stat_gen.batch_size * stat_gen.__len__())
+            ]
         preds = model.predict_on_batch(batch)
 
         # calculate base position on arrays
@@ -223,10 +442,9 @@ def save_preds(
     print_options=[True, True, True, True, True, True],
     verbose=1,
 ):
-
     if amount > 0:
 
-        if os.path.exists(save_folder) == False:
+        if not os.path.exists(save_folder):
             os.makedirs(save_folder)
         loops = stat_gen.__len__() + 1
 
@@ -240,14 +458,16 @@ def save_preds(
 
             # if on last loop, not all batchs might be full
             if i == loops - 1:
-                batch = batch[: (len(data) - stat_gen.batch_size * stat_gen.__len__())]
+                batch = batch[
+                    : (len(data) - stat_gen.batch_size * stat_gen.__len__())
+                ]
             preds = model.predict_on_batch(batch)
 
             # calculate base position on arrays
             base_j = i * stat_gen.batch_size
 
             # if desired amount has not been reached, continue saving batches
-            if os.path.exists(save_folder + "/predictions") == False:
+            if not os.path.exists(save_folder + "/predictions"):
                 os.makedirs(save_folder + "/predictions")
             for j in range(len(preds)):
                 if j + base_j < amount:
@@ -273,11 +493,12 @@ def format_table(
     return_formatted=False,
     sorting_metric="Average",
 ):
-
     data_pretty = data.loc[:, :].astype("object")
     data_info_pretty = data_info.loc[:, :].astype("object")
 
-    data_info_pretty.loc["count"] = data_info_pretty.loc["count"].map("{:.0f}".format)
+    data_info_pretty.loc["count"] = data_info_pretty.loc["count"].map(
+        "{:.0f}".format
+    )
 
     for i in data_pretty.iteritems():
         data_pretty.loc[:, i[0]] = data_pretty[i[0]].map("{:.4f}".format)
@@ -293,8 +514,12 @@ def format_table(
 
     data_pretty.Name = data_pretty.Name.apply(lambda x: x[:-4])
 
-    data_pretty["Input Image"] = dataset.set_index(np.arange(len(dataset))).raw_path
-    data_pretty["Ground Truth"] = dataset.set_index(np.arange(len(dataset))).mask_path
+    data_pretty["Input Image"] = dataset.set_index(
+        np.arange(len(dataset))
+    ).raw_path
+    data_pretty["Ground Truth"] = dataset.set_index(
+        np.arange(len(dataset))
+    ).mask_path
 
     data_pretty.to_csv(save_folder + "/metrics_pretty.csv")
     data_info_pretty.to_csv(save_folder + "/metrics_summary_pretty.csv")
@@ -310,9 +535,8 @@ def format_table(
 
 
 def get_statistics(iou_list, save_folder, dpi=400, ci=None):
-
     plots_folder = save_folder + "/plots"
-    if os.path.exists(plots_folder) == False:
+    if not os.path.exists(plots_folder):
         os.makedirs(plots_folder)
     data = pd.DataFrame(
         np.array(iou_list, dtype="float64"),
@@ -331,16 +555,24 @@ def get_statistics(iou_list, save_folder, dpi=400, ci=None):
         ],
     )
 
-    data["Lumen Area Ratio"] = data["Lumen Area [mm²]"] / data["Lumen Area GT [mm²]"]
-    data["Plaque Area Ratio"] = data["Plaque Area [mm²]"] / data["Plaque Area GT [mm²]"]
-    data["Vessel Area Ratio"] = data["Vessel Area [mm²]"] / data["Vessel Area GT [mm²]"]
+    data["Lumen Area Ratio"] = (
+        data["Lumen Area [mm²]"] / data["Lumen Area GT [mm²]"]
+    )
+    data["Plaque Area Ratio"] = (
+        data["Plaque Area [mm²]"] / data["Plaque Area GT [mm²]"]
+    )
+    data["Vessel Area Ratio"] = (
+        data["Vessel Area [mm²]"] / data["Vessel Area GT [mm²]"]
+    )
 
     # Uma imagem inteira tem 100mm2
     data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"] = (
         100 * data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"]
     )
 
-    data["Plaque Burden"] = data["Plaque Area [mm²]"] / data["Vessel Area [mm²]"]
+    data["Plaque Burden"] = (
+        data["Plaque Area [mm²]"] / data["Vessel Area [mm²]"]
+    )
     data["Plaque Burden GT"] = (
         data["Plaque Area GT [mm²]"] / data["Vessel Area GT [mm²]"]
     )
@@ -438,7 +670,9 @@ def get_statistics(iou_list, save_folder, dpi=400, ci=None):
         )
         graph.get_figure().clf()
 
-        graph = sns.scatterplot(data=data[ratio_name], marker="o", color="red", s=3)
+        graph = sns.scatterplot(
+            data=data[ratio_name], marker="o", color="red", s=3
+        )
         graph = sns.lineplot(
             x=[i for i in range(len(data))], y=[1 for i in range(len(data))]
         )
@@ -490,7 +724,9 @@ def get_statistics(iou_list, save_folder, dpi=400, ci=None):
         cut=0,
     )
     graph.set(ylim=(0, 1.03))
-    graph.get_figure().savefig(plots_folder + "/iou_violin.png", format="png", dpi=dpi)
+    graph.get_figure().savefig(
+        plots_folder + "/iou_violin.png", format="png", dpi=dpi
+    )
     graph.get_figure().clf()
 
     for bw in [0.01, 0.1, 0.2]:
@@ -504,12 +740,16 @@ def get_statistics(iou_list, save_folder, dpi=400, ci=None):
         )
         graph.set(ylim=(0, 1.03))
         graph.get_figure().savefig(
-            plots_folder + "/iou_violin_bw_" + str(bw) + ".png", format="png", dpi=dpi
+            plots_folder + "/iou_violin_bw_" + str(bw) + ".png",
+            format="png",
+            dpi=dpi,
         )
         graph.get_figure().clf()
     graph = sns.boxplot(data=data.loc[:, "Lumen":"Vessel"], saturation=0.9)
     graph.set(ylim=(0, 1.03))
-    graph.get_figure().savefig(plots_folder + "/iou_box.png", format="png", dpi=dpi)
+    graph.get_figure().savefig(
+        plots_folder + "/iou_box.png", format="png", dpi=dpi
+    )
     graph.get_figure().clf()
 
     graph = sns.scatterplot(
@@ -559,7 +799,9 @@ def get_statistics(iou_list, save_folder, dpi=400, ci=None):
         graph.get_figure().clf()
     graph = sns.boxplot(data=data.loc[:, iou_cols], saturation=0.9)
     graph.set(ylim=(0, 1.03))
-    graph.get_figure().savefig(plots_folder + "/iou_box_avg.png", format="png", dpi=dpi)
+    graph.get_figure().savefig(
+        plots_folder + "/iou_box_avg.png", format="png", dpi=dpi
+    )
     graph.get_figure().clf()
 
     graph = sns.scatterplot(
@@ -626,9 +868,13 @@ def plot_training(history, save_folder):
 
     sns.set_theme(style="ticks")
 
-    graph = sns.lineplot(data=training, palette="bright", markers=True, dashes=False)
+    graph = sns.lineplot(
+        data=training, palette="bright", markers=True, dashes=False
+    )
     graph.set(
-        xlim=(1, len(training)), ylabel="Metric", xticks=np.arange(1, len(training) + 1)
+        xlim=(1, len(training)),
+        ylabel="Metric",
+        xticks=np.arange(1, len(training) + 1),
     )
     graph.tick_params(axis="x", which="major", labelsize=7, rotation=45)
     graph.tick_params(axis="y", which="major", labelsize=8, rotation=0)
@@ -650,18 +896,17 @@ def get_bad_preds(
     name_format=["Average", "Name"],
     verbose=1,
 ):
-
     if amount > 0:
 
-        if os.path.exists(save_folder + "/bad_preds") == False:
+        if not os.path.exists(save_folder + "/bad_preds"):
             os.makedirs(save_folder + "/bad_preds")
         bad_preds = data_sorted.iloc[:amount]
 
         idx = pd.IndexSlice
 
         bad_dataset = bad_preds.loc[:, idx["Input Image", "Ground Truth"]]
-        
-        bad_dataset.columns = pd.Index(data=['raw_path', 'mask_path'])
+
+        bad_dataset.columns = pd.Index(data=["raw_path", "mask_path"])
 
         bad_gen = man.KerasManager(10, image_size, bad_dataset, normalize=True)
 
