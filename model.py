@@ -31,13 +31,21 @@ class Segmenter:
         self.tst_dataset = None
         self.stt_dataset = None
 
+        self.trn_gen = None
+        self.val_gen = None
+        self.tst_gen = None
+        self.stt_gen = None
+
         self.history = None
         self.callbacks = None
+        self.model = None
+
+        self.epoch_results = None
 
         #### create folder and update model name
         k = 0
         self.model_name = self.model_name + "_" + str(k)
-        while os.path.exists(self.model_name) == True:
+        while os.path.exists(self.model_name):
             k += 1
             n = [i + "_" for i in self.model_name.split(sep="_")[:-1]]
             name = ""
@@ -55,6 +63,22 @@ class Segmenter:
         self.val_dataset = ds[1]
         self.tst_dataset = ds[2]
         self.stt_dataset = ds[3]
+
+        min_bs = min(
+            len(ds[0]),
+            len(ds[1]),
+            len(ds[2]),
+            len(ds[3]),
+            self.setup.batch_size,
+        )
+
+        if min_bs != self.setup.batch_size:
+            self.setup.batch_size = min_bs
+            print(
+                "batch_size too big, changing to ",
+                min_bs,
+                sep="",
+            )
 
         self.trn_gen = man.KerasManager(
             self.setup.batch_size,
@@ -158,7 +182,7 @@ class Segmenter:
             show_layer_names=show_layer_names,
             show_dtype=show_dtype,
             expand_nested=True,
-            dpi=192,
+            dpi=96,
         )
 
         tf.keras.utils.plot_model(
@@ -169,7 +193,7 @@ class Segmenter:
             show_layer_names=show_layer_names,
             show_dtype=show_dtype,
             expand_nested=False,
-            dpi=192,
+            dpi=96,
         )
 
         bmodel = nets.get_base(
@@ -198,17 +222,17 @@ class Segmenter:
 
     def analisys(self, preds_amount=None, bad_preds_amount=None):
 
-        if preds_amount == None:
+        if preds_amount is None:
             preds_amount = self.setup.preds_amount
 
-        if bad_preds_amount == None:
+        if bad_preds_amount is None:
             bad_preds_amount = self.setup.bad_preds_amount
 
         print("\n\nEvaluating model " + self.model_name + ":\n\n")
         results = self.model.evaluate(self.tst_gen)
         print("\nEvaluation results:", results)
 
-        self.epochs = vis.plot_training(self.history, self.model_name)
+        self.epoch_results = vis.plot_training(self.history, self.model_name)
 
         print("\n\nRetrieving model statistics:\n\n")
 
