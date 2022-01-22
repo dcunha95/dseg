@@ -20,9 +20,9 @@ import dseg.nets as nets
 
 class Segmenter:
     def __init__(
-            self,
-            setup,
-            model_name="ivus_seg",
+        self,
+        setup,
+        model_name="ivus_seg",
     ):
         self.model_name = model_name
         self.setup = setup
@@ -31,37 +31,8 @@ class Segmenter:
         self.tst_dataset = None
         self.stt_dataset = None
 
-        if self.setup.model_type == "unet":
-            self.model = nets.unet_12(
-                input_shape=self.setup.input_shape,
-                b_fil=self.setup.b_fil,
-                kernel_size=self.setup.kernel_size,
-                dropout_amount=self.setup.dropout_amount,
-                label_amount=3,
-                node_type=self.setup.node_type,
-                use_bn=self.setup.use_bn,
-                depth=self.setup.depth,
-                pool_size=self.setup.pool_size,
-            )
-
-        if self.setup.model_type == "unet++":
-            self.model = nets.unet_pp_11(
-                input_shape=self.setup.input_shape,
-                b_fil=self.setup.b_fil,
-                kernel_size=self.setup.kernel_size,
-                dropout_amount=self.setup.dropout_amount,
-                label_amount=3,
-                node_type=self.setup.node_type,
-                use_bn=self.setup.use_bn,
-                pool_size=self.setup.pool_size,
-                concat_all=self.setup.concat_all,
-            )
-
-        self.model.compile(
-            optimizer=self.setup.optimizer,
-            loss=self.setup.loss,
-            metrics=[tf.keras.metrics.MeanIoU(num_classes=3)],
-        )
+        self.history = None
+        self.callbacks = None
 
         #### create folder and update model name
         k = 0
@@ -76,14 +47,6 @@ class Segmenter:
 
         os.makedirs(self.model_name)
         ####
-
-        self.callbacks = [
-            tf.keras.callbacks.ModelCheckpoint(
-                self.model_name + "/model.h5",
-                save_best_only=True,
-                monitor="val_mean_io_u",
-            ),
-        ]
 
         self.iou_list = None
 
@@ -117,8 +80,59 @@ class Segmenter:
             self.stt_dataset,
         )
 
-    def fit(self):
+    def compile(self):
+        if self.setup.model_type == "unet":
+            self.model = nets.unet_12(
+                input_shape=self.setup.input_shape,
+                b_fil=self.setup.b_fil,
+                kernel_size=self.setup.kernel_size,
+                dropout_amount=self.setup.dropout_amount,
+                label_amount=3,
+                node_type=self.setup.node_type,
+                use_bn=self.setup.use_bn,
+                depth=self.setup.depth,
+                pool_size=self.setup.pool_size,
+            )
 
+        if self.setup.model_type == "unet++":
+            self.model = nets.unet_pp_11(
+                input_shape=self.setup.input_shape,
+                b_fil=self.setup.b_fil,
+                kernel_size=self.setup.kernel_size,
+                dropout_amount=self.setup.dropout_amount,
+                label_amount=3,
+                node_type=self.setup.node_type,
+                use_bn=self.setup.use_bn,
+                pool_size=self.setup.pool_size,
+                concat_all=self.setup.concat_all,
+            )
+
+        if self.setup.model_type == "old_unet":
+            self.model = nets.unet_4(
+                input_shape=self.setup.input_shape,
+                b_fil=self.setup.b_fil,
+                kernel_size=self.setup.kernel_size,
+                dropout_amount=self.setup.dropout_amount,
+                label_amount=3,
+                node_type=4,
+                use_bn=self.setup.use_bn,
+            )
+
+        self.model.compile(
+            optimizer=self.setup.optimizer,
+            loss=self.setup.loss,
+            metrics=[tf.keras.metrics.MeanIoU(num_classes=3)],
+            # run_eagerly=True,
+        )
+        self.callbacks = [
+            tf.keras.callbacks.ModelCheckpoint(
+                self.model_name + "/model.h5",
+                save_best_only=True,
+                monitor="val_mean_io_u",
+            ),
+        ]
+
+    def fit(self):
         self.history = self.model.fit(
             self.trn_gen,
             epochs=self.setup.epochs,
@@ -129,11 +143,11 @@ class Segmenter:
         self.model.save(self.model_name + "/model.h5")
 
     def plot_model(
-            self,
-            show_shapes=False,
-            show_dtype=False,
-            show_layer_names=True,
-            rankdir="TB",
+        self,
+        show_shapes=False,
+        show_dtype=False,
+        show_layer_names=True,
+        rankdir="TB",
     ):
 
         tf.keras.utils.plot_model(
@@ -166,7 +180,7 @@ class Segmenter:
             dropout_amount=self.setup.dropout_amount,
             node_type=self.setup.node_type,
             use_bn=self.setup.use_bn,
-            name='bm',
+            name="bm",
         )
 
         tf.keras.utils.plot_model(
@@ -204,9 +218,15 @@ class Segmenter:
             dataset=self.stt_dataset,
         )
 
-        self.data, self.data_info = vis.get_statistics(self.iou_list, self.model_name)
+        self.data, self.data_info = vis.get_statistics(
+            self.iou_list, self.model_name
+        )
 
-        self.data_pretty, self.data_info_pretty, data_sorted = vis.format_table(
+        (
+            self.data_pretty,
+            self.data_info_pretty,
+            data_sorted,
+        ) = vis.format_table(
             self.data,
             self.data_info,
             self.stt_dataset,
@@ -240,5 +260,4 @@ class Segmenter:
         )
 
     def save(self):
-
         pass
