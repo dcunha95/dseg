@@ -20,9 +20,9 @@ import dseg.nets as nets
 
 class Segmenter:
     def __init__(
-        self,
-        setup,
-        model_name="ivus_seg",
+            self,
+            setup,
+            model_name="ivus_seg",
     ):
         self.model_name = model_name
         self.setup = setup
@@ -129,53 +129,58 @@ class Segmenter:
         self.model.save(self.model_name + "/model.h5")
 
     def plot_model(
-        self,
-        save=True,
-        show_shapes=False,
-        show_dtype=False,
-        show_layer_names=True,
-        rankdir="TB",
-        expand_nested=False,
-        subgraph=False,
+            self,
+            show_shapes=False,
+            show_dtype=False,
+            show_layer_names=True,
+            rankdir="TB",
     ):
 
-        # plot = Image(
-        #     tf.keras.utils.model_to_dot(
-        #         self.model,
-        #         show_shapes=show_shapes,
-        #         show_dtype=show_dtype,
-        #         show_layer_names=show_layer_names,
-        #         rankdir=rankdir,
-        #         expand_nested=expand_nested,
-        #         dpi=96,
-        #         subgraph=False,
-        #     ).create_png()
-        # )
+        tf.keras.utils.plot_model(
+            model=self.model,
+            to_file=self.model_name + "/model_expanded.png",
+            show_shapes=show_shapes,
+            rankdir=rankdir,
+            show_layer_names=show_layer_names,
+            show_dtype=show_dtype,
+            expand_nested=True,
+            dpi=192,
+        )
 
-        if save:
-            tf.keras.utils.plot_model(
-                model=self.model,
-                to_file=self.model_name + "/model_expanded.png",
-                show_shapes=show_shapes,
-                rankdir=rankdir,
-                show_layer_names=show_layer_names,
-                show_dtype=show_dtype,
-                expand_nested=True,
-                dpi=192,
-            )
+        tf.keras.utils.plot_model(
+            model=self.model,
+            to_file=self.model_name + "/model.png",
+            show_shapes=show_shapes,
+            rankdir=rankdir,
+            show_layer_names=show_layer_names,
+            show_dtype=show_dtype,
+            expand_nested=False,
+            dpi=192,
+        )
 
-            tf.keras.utils.plot_model(
-                model=self.model,
-                to_file=self.model_name + "/model.png",
-                show_shapes=show_shapes,
-                rankdir=rankdir,
-                show_layer_names=show_layer_names,
-                show_dtype=show_dtype,
-                expand_nested=False,
-                dpi=192,
-            )
+        bmodel = nets.get_base(
+            input_shape=self.setup.input_shape,
+            level=0,
+            b_fil=self.setup.b_fil,
+            kernel_size=self.setup.kernel_size,
+            dropout_amount=self.setup.dropout_amount,
+            node_type=self.setup.node_type,
+            use_bn=self.setup.use_bn,
+            name='bm',
+        )
 
-        # return plot
+        tf.keras.utils.plot_model(
+            model=bmodel,
+            to_file=self.model_name + "/model_base.png",
+            show_shapes=show_shapes,
+            rankdir=rankdir,
+            show_layer_names=show_layer_names,
+            show_dtype=show_dtype,
+            expand_nested=True,
+            dpi=192,
+        )
+
+    # return plot
 
     def analisys(self, preds_amount=None, bad_preds_amount=None):
 
