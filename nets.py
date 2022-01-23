@@ -1281,6 +1281,7 @@ def unet_12(
     pool_size=2,
 ):
 
+    # print("input_shape:", input_shape)
     inputs = tf.keras.Input(input_shape)
     x = inputs
 
@@ -1288,15 +1289,15 @@ def unet_12(
 
     # descend
     for k in range(depth):
-        # print(k)
         name = "bm_" + str(k) + "_0"
+        # print(name)
         shape = (
             int(input_shape[0] / (pool_size ** k)),
             int(input_shape[1] / (pool_size ** k)),
-            int(input_shape[2] * (b_fil ** k)),
+            int(input_shape[2] * max(1, (b_fil * k))),
         )
-        # print(shape)
-        # print(x.shape)
+        # print("node_entrance:", shape)
+        # print("x.shape:", x.shape)
 
         node = get_base(
             input_shape=shape,
@@ -1309,7 +1310,9 @@ def unet_12(
             name=name,
         )(x)
         nodes[k].append(node)
+        # print("node_exit:", node.shape)
         x = ly.MaxPool2D(pool_size=pool_size, padding="same")(nodes[k][-1])
+        # print("maxpool:", x.shape)
 
     for k in range(depth - 2, -1, -1):
         # print(k)
@@ -1353,6 +1356,7 @@ def unet_pp_11(
     pool_size=2,
     concat_all=True,
 ):
+    # print("input_shape:", input_shape)
 
     inputs = tf.keras.Input(input_shape)
     x = inputs
@@ -1361,16 +1365,15 @@ def unet_pp_11(
 
     # descend (backbone)
     for i in range(depth):
-        # print(i)
         name = "bm_" + str(i) + "_0"
+        # print(name)
         shape = (
             int(input_shape[0] / (pool_size ** i)),
             int(input_shape[1] / (pool_size ** i)),
-            int(input_shape[2] * (b_fil ** i)),
+            int(input_shape[2] * max(1, (b_fil * i))),
         )
-        # print(shape)
-        # print(x.shape)
-
+        # print("node_entrance:", shape)
+        # print("x.shape:", x.shape)
         node = get_base(
             input_shape=shape,
             level=i,
@@ -1381,8 +1384,10 @@ def unet_pp_11(
             use_bn=use_bn,
             name=name,
         )(x)
+        # print("node_exit:", node.shape)
         nodes[i].append(node)
         x = ly.MaxPool2D(pool_size=pool_size, padding="same")(nodes[i][-1])
+        # print("maxpool:", x.shape)
 
     for j in range(1, depth):
         for i in range(depth - j):
