@@ -29,7 +29,17 @@ class QualityAssurance:
         return inter / union
 
     @staticmethod
-    def save_stats(prediction, target_img_path, use_original=False):
+    def get_dice(y_pred, y_true):
+        "Returns DICE (Sørensen–Dice Index)"
+        inter = np.count_nonzero(
+            np.logical_and(y_pred, y_true).astype("uint8")
+        )
+        x = np.count_nonzero(y_pred.astype("uint8"))
+        y = np.count_nonzero(y_true.astype("uint8"))
+        return inter / (x + y)
+
+    @staticmethod
+    def prediction_metrics(prediction, target_img_path, use_original=False):
         """Take quality metrics from a prediction"""
 
         pred = np.argmax(prediction, axis=-1)
@@ -52,10 +62,11 @@ class QualityAssurance:
                 target_size=prediction.shape[:-1],
                 interpolation="nearest",
             )
+
         gt = tf.keras.preprocessing.image.img_to_array(gt, dtype="uint8")
         gt = np.squeeze(gt)
 
-        # separando cada classe
+        # splitting each class
         pred_e = (pred == 0).astype("uint8")
         pred_l = (pred == 1).astype("uint8")
         pred_p = (pred == 2).astype("uint8")
@@ -81,19 +92,28 @@ class QualityAssurance:
         # error_area_p = area_pred_p - area_gt_p
         # error_area_v = area_pred_v - area_gt_v
 
-        # calculando os IoUs
+        # Calculating IoUs
 
-        # iou do externo, lumen, placa e vaso
-        # (vaso = lumen + placa)
-        iou_e = get_iou(pred_e, gt_e)
-        iou_l = get_iou(pred_l, gt_l)
-        iou_p = get_iou(pred_p, gt_p)
-        iou_v = get_iou(pred_v, gt_v)
+        # external, lumen, plaque and vessel
+        # (vessel = lumen + placa)
+        iou_e = QualityAssurance.get_iou(pred_e, gt_e)
+        iou_l = QualityAssurance.get_iou(pred_l, gt_l)
+        iou_p = QualityAssurance.get_iou(pred_p, gt_p)
+        iou_v = QualityAssurance.get_iou(pred_v, gt_v)
 
-        # iou médio entre placa e lumen
+        # average iou between plaque and lumen
         iou_avg = (iou_l + iou_p) / 2
 
-        iou = [
+        # # Calculating DICE
+        # dice_e = QualityAssurance.get_dice(pred_e, gt_e)
+        # dice_l = QualityAssurance.get_dice(pred_l, gt_l)
+        # dice_p = QualityAssurance.get_dice(pred_p, gt_p)
+        # dice_v = QualityAssurance.get_dice(pred_v, gt_v)
+        #
+        # # average DICE between plaque and lumen
+        # dice_avg = (dice_l + dice_p) / 2
+
+        metrics = [
             iou_avg,
             iou_e,
             iou_l,
@@ -107,7 +127,7 @@ class QualityAssurance:
             area_gt_v,
         ]
 
-        return iou
+        return metrics
 
     @staticmethod
     def retrieve_stats(
@@ -140,10 +160,418 @@ class QualityAssurance:
 
             for j in range(len(preds)):
 
-                stats_list[j + base_j] = save_stats(
+                stats_list[j + base_j] = QualityAssurance.prediction_metrics(
                     preds[j], dataset.mask_path.iloc[j + base_j]
                 )
-        return stats_list
+
+        data = pd.DataFrame(
+            np.array(stats_list, dtype="float64"),
+            columns=[
+                "Average",
+                "Outer",
+                "Lumen",
+                "Plaque",
+                "Vessel",
+                "Lumen Area [mm²]",
+                "Lumen Area GT [mm²]",
+                "Plaque Area [mm²]",
+                "Plaque Area GT [mm²]",
+                "Vessel Area [mm²]",
+                "Vessel Area GT [mm²]",
+            ],
+        )
+
+        # More metrics
+        data["Lumen Area Ratio"] = (
+            data["Lumen Area [mm²]"] / data["Lumen Area GT [mm²]"]
+        )
+        data["Plaque Area Ratio"] = (
+            data["Plaque Area [mm²]"] / data["Plaque Area GT [mm²]"]
+        )
+        data["Vessel Area Ratio"] = (
+            data["Vessel Area [mm²]"] / data["Vessel Area GT [mm²]"]
+        )
+
+        # A single image has 100mm2
+        data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"] = (
+            100 * data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"]
+        )
+
+        # Even more
+        data["Plaque Burden"] = (
+            data["Plaque Area [mm²]"] / data["Vessel Area [mm²]"]
+        )
+        data["Plaque Burden GT"] = (
+            data["Plaque Area GT [mm²]"] / data["Vessel Area GT [mm²]"]
+        )
+
+        # MOOOAAAAAR
+        data["Plaque Burden Model/GT Ratio"] = (
+            data["Plaque Burden"] / data["Plaque Burden GT"]
+        )
+
+        data_info = data.describe()
+
+        # data.to_csv(save_folder + "/metrics.csv")
+        # data_info.to_csv(save_folder + "/metrics_summary.csv")
+
+        return data, data_info
+
+    @staticmethod
+    def get_plots(
+        data,
+        data_info,
+        save_folder,
+        dpi=400,
+        ci=None,
+    ):
+
+        plots_folder = save_folder + "/plots"
+        if not os.path.exists(plots_folder):
+            os.makedirs(plots_folder)
+
+        def make_area_ratio_plots(
+            name,
+            gt_name,
+            ratio_name,
+            file_name,
+            dpi=dpi,
+            data=data,
+            data_info=data_info,
+            ci=ci,
+        ):
+            """
+
+            :param name:
+            :param gt_name:
+            :param ratio_name:
+            :param file_name:
+            :param dpi:
+            :param data:
+            :param data_info:
+            :param ci:
+            :return:
+            """
+            sns.set_theme(style="whitegrid")
+
+            # [min x, max x, min y, max y]
+            data_max = max(data_info.loc["max", [name, gt_name]])
+
+            graph = sns.scatterplot(
+                x=data[gt_name], y=data[name], marker="o", color="red", s=3
+            )
+            graph = sns.lineplot(x=[0, 1.2 * data_max], y=[0, 1.2 * data_max])
+            graph.set(xlim=(0, 1.2 * data_max), ylim=(0, 1.2 * data_max))
+            graph.get_figure().savefig(
+                plots_folder + "/" + file_name + ".png",
+                format="png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            graph.get_figure().clf()
+
+            graph = sns.scatterplot(
+                x=data[gt_name], y=data[name], marker="o", color="red", s=3
+            )
+            graph = sns.lineplot(x=[0, 1.2 * data_max], y=[0, 1.2 * data_max])
+            graph.axis("scaled")
+            graph.set(xlim=(0, 1.2 * data_max), ylim=(0, 1.2 * data_max))
+            graph.get_figure().savefig(
+                plots_folder + "/" + "scaled_" + file_name + ".png",
+                format="png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            graph.get_figure().clf()
+
+            graph = matplotlib.pyplot.axes()
+            graph.set(xlim=(0, 1.2 * data_max), ylim=(0, 1.2 * data_max))
+            graph = sns.regplot(
+                data=data,
+                x=gt_name,
+                y=name,
+                color="red",
+                truncate=False,
+                ci=ci,
+                scatter_kws={"s": 3},
+            )
+            graph = sns.lineplot(x=[0, 1.2 * data_max], y=[0, 1.2 * data_max])
+            graph.get_figure().savefig(
+                plots_folder + "/" + "regression_" + file_name + ".png",
+                format="png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            graph.get_figure().clf()
+
+            graph = matplotlib.pyplot.axes()
+            graph.axis("scaled")
+            graph.set(xlim=(0, 1.2 * data_max), ylim=(0, 1.2 * data_max))
+            graph = sns.regplot(
+                data=data,
+                x=gt_name,
+                y=name,
+                color="red",
+                truncate=False,
+                ci=ci,
+                scatter_kws={"s": 3},
+            )
+            graph = sns.lineplot(x=[0, 1.2 * data_max], y=[0, 1.2 * data_max])
+            graph.get_figure().savefig(
+                plots_folder + "/" + "regression_scaled_" + file_name + ".png",
+                format="png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            graph.get_figure().clf()
+
+            graph = sns.scatterplot(
+                data=data[ratio_name], marker="o", color="red", s=3
+            )
+            graph = sns.lineplot(
+                x=[i for i in range(len(data))],
+                y=[1 for i in range(len(data))],
+            )
+            graph.set(
+                xlim=(0, len(data)),
+                ylim=(0, max(2, 1.1 * data_info.loc["max", ratio_name])),
+            )
+            graph.get_figure().savefig(
+                plots_folder + "/" + "ratio_" + file_name + ".png",
+                format="png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            graph.get_figure().clf()
+
+            graph = matplotlib.pyplot.axes()
+            graph.set(
+                xlim=(0, len(data)),
+                ylim=(0, max(2, 1.1 * data_info.loc["max", ratio_name])),
+            )
+            graph = sns.regplot(
+                data=data,
+                x=[i for i in range(len(data))],
+                y=data[ratio_name],
+                color="red",
+                truncate=False,
+                ci=ci,
+                scatter_kws={"s": 3},
+            )
+            graph = sns.lineplot(
+                x=[i for i in range(len(data))],
+                y=[1 for i in range(len(data))],
+            )
+            graph.get_figure().savefig(
+                plots_folder + "/" + "ratio_regression_" + file_name + ".png",
+                format="png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            graph.get_figure().clf()
+
+            return
+
+        # no mean
+        graph = sns.violinplot(
+            data=data.loc[:, "Lumen":"Vessel"],
+            # inner="quartile",
+            saturation=0.9,
+            gridsize=400,
+            cut=0,
+        )
+        graph.set(ylim=(0, 1.03))
+        graph.get_figure().savefig(
+            plots_folder + "/iou_violin.png", format="png", dpi=dpi
+        )
+        graph.get_figure().clf()
+
+        for bw in [0.01, 0.1, 0.2]:
+            graph = sns.violinplot(
+                data=data.loc[:, "Lumen":"Vessel"],
+                # inner="quartile",
+                saturation=0.9,
+                bw=bw,
+                gridsize=400,
+                cut=0,
+            )
+            graph.set(ylim=(0, 1.03))
+            graph.get_figure().savefig(
+                plots_folder + "/iou_violin_bw_" + str(bw) + ".png",
+                format="png",
+                dpi=dpi,
+            )
+            graph.get_figure().clf()
+        graph = sns.boxplot(data=data.loc[:, "Lumen":"Vessel"], saturation=0.9)
+        graph.set(ylim=(0, 1.03))
+        graph.get_figure().savefig(
+            plots_folder + "/iou_box.png", format="png", dpi=dpi
+        )
+        graph.get_figure().clf()
+
+        graph = sns.scatterplot(
+            data=data.loc[:, "Lumen":"Vessel"],
+            markers=["o", "o", "o"],
+            alpha=0.85,
+            edgecolor=None,
+        )
+        graph.set(xlim=(0, len(data)), ylim=(0, 1.03))
+        graph.get_figure().savefig(
+            save_folder + "/plots" + "/iou_scatter.png", format="png", dpi=dpi
+        )
+        graph.get_figure().clf()
+
+        # with mean
+        idx = pd.IndexSlice
+        iou_cols = idx["Lumen", "Plaque", "Vessel", "Average"]
+
+        graph = sns.violinplot(
+            data=data.loc[:, iou_cols],
+            # inner="quartile",
+            saturation=0.9,
+            gridsize=400,
+            cut=0,
+        )
+        graph.set(ylim=(0, 1.03))
+        graph.get_figure().savefig(
+            plots_folder + "/iou_violin_avg.png", format="png", dpi=dpi
+        )
+        graph.get_figure().clf()
+
+        for bw in [0.01, 0.1, 0.2]:
+            graph = sns.violinplot(
+                data=data.loc[:, iou_cols],
+                # inner="quartile",
+                saturation=0.9,
+                bw=bw,
+                gridsize=400,
+                cut=0,
+            )
+            graph.set(ylim=(0, 1.03))
+            graph.get_figure().savefig(
+                plots_folder + "/iou_violin_bw_" + str(bw) + "_avg.png",
+                format="png",
+                dpi=dpi,
+            )
+            graph.get_figure().clf()
+        graph = sns.boxplot(data=data.loc[:, iou_cols], saturation=0.9)
+        graph.set(ylim=(0, 1.03))
+        graph.get_figure().savefig(
+            plots_folder + "/iou_box_avg.png", format="png", dpi=dpi
+        )
+        graph.get_figure().clf()
+
+        graph = sns.scatterplot(
+            data=data.loc[:, "Average"],
+            markers=["o"],
+            alpha=0.85,
+            edgecolor=None,
+        )
+        graph.set(ylim=(0, 1.03))
+        graph.set(xlim=(0, len(data)), ylim=(0, 1.03))
+        graph.get_figure().savefig(
+            save_folder + "/plots" + "/iou_scatter_avg.png",
+            format="png",
+            dpi=dpi,
+        )
+        graph.get_figure().clf()
+
+        make_area_ratio_plots(
+            "Lumen Area [mm²]",
+            "Lumen Area GT [mm²]",
+            "Lumen Area Ratio",
+            "area_lumen",
+        )
+        make_area_ratio_plots(
+            "Plaque Area [mm²]",
+            "Plaque Area GT [mm²]",
+            "Plaque Area Ratio",
+            "area_plaque",
+        )
+        make_area_ratio_plots(
+            "Vessel Area [mm²]",
+            "Vessel Area GT [mm²]",
+            "Vessel Area Ratio",
+            "area_vessel",
+        )
+
+        make_area_ratio_plots(
+            "Plaque Area [mm²]",
+            "Vessel Area [mm²]",
+            "Plaque Burden",
+            "plaque_burden",
+        )
+        make_area_ratio_plots(
+            "Plaque Area GT [mm²]",
+            "Vessel Area GT [mm²]",
+            "Plaque Burden GT",
+            "plaque_burden_gt",
+        )
+        make_area_ratio_plots(
+            "Plaque Burden",
+            "Plaque Burden GT",
+            "Plaque Burden Model/GT Ratio",
+            "plaque_burden_model_gt_comparison",
+        )
+
+        return data, data_info
+
+    @staticmethod
+    def format_table(
+            data,
+            data_info,
+            dataset,
+            save_folder,
+            sorting_metric="Average",
+    ):
+        """
+        Formats data and data_info.
+
+        :param data:
+        :param data_info:
+        :param dataset:
+        :param save_folder:
+        :param sorting_metric:
+        :return:
+        """
+        dataf = data.loc[:, :].astype("object")
+        data_infof = data_info.loc[:, :].astype("object")
+
+        data_infof.loc["count"] = data_infof.loc["count"].map("{:.0f}".format)
+
+        for i in dataf.iteritems():
+            dataf.loc[:, i[0]] = dataf[i[0]].map("{:.4f}".format)
+            data_infof.loc["mean":"max", i[0]] = data_infof.loc[
+            "mean":"max", i[0]
+            ].map("{:.4f}".format)
+
+        dataf = dataf.astype("str")
+        data_infof = data_infof.astype("str")
+
+        df = dataset.set_index(np.arange(len(dataset)))
+
+        dataf.insert(0, "Name", df.file_name)
+
+        dataf.Name = dataf.Name.apply(
+            lambda
+                x: x[:-4]
+            )
+
+        dataf["Input Image"] = dataset.set_index(
+            np.arange(len(dataset))
+            ).raw_path
+        dataf["Ground Truth"] = dataset.set_index(
+            np.arange(len(dataset))
+        ).mask_path
+
+        dataf.to_csv(save_folder + "/metrics_pretty.csv")
+        data_infof.to_csv(save_folder + "/metrics_summary_pretty.csv")
+
+        data_sorted = dataf.sort_values(by=sorting_metric)
+
+        # data_sorted.to_csv(save_folder + "/metrics_sorted.csv")
+
+        return dataf, data_infof, data_sorted
 
 
 class VisualizerAssist:
@@ -490,48 +918,50 @@ def format_table(
     data_info,
     dataset,
     save_folder,
-    return_formatted=False,
     sorting_metric="Average",
 ):
-    data_pretty = data.loc[:, :].astype("object")
-    data_info_pretty = data_info.loc[:, :].astype("object")
+    """
 
-    data_info_pretty.loc["count"] = data_info_pretty.loc["count"].map(
-        "{:.0f}".format
-    )
+    :param data:
+    :param data_info:
+    :param dataset:
+    :param save_folder:
+    :param sorting_metric:
+    :return:
+    """
+    dataf = data.loc[:, :].astype("object")
+    data_infof = data_info.loc[:, :].astype("object")
 
-    for i in data_pretty.iteritems():
-        data_pretty.loc[:, i[0]] = data_pretty[i[0]].map("{:.4f}".format)
-        data_info_pretty.loc["mean":"max", i[0]] = data_info_pretty.loc[
+    data_infof.loc["count"] = data_infof.loc["count"].map("{:.0f}".format)
+
+    for i in dataf.iteritems():
+        dataf.loc[:, i[0]] = dataf[i[0]].map("{:.4f}".format)
+        data_infof.loc["mean":"max", i[0]] = data_infof.loc[
             "mean":"max", i[0]
         ].map("{:.4f}".format)
-    data_pretty = data_pretty.astype("str")
-    data_info_pretty = data_info_pretty.astype("str")
+
+    dataf = dataf.astype("str")
+    data_infof = data_infof.astype("str")
 
     df = dataset.set_index(np.arange(len(dataset)))
 
-    data_pretty.insert(0, "Name", df.file_name)
+    dataf.insert(0, "Name", df.file_name)
 
-    data_pretty.Name = data_pretty.Name.apply(lambda x: x[:-4])
+    dataf.Name = dataf.Name.apply(lambda x: x[:-4])
 
-    data_pretty["Input Image"] = dataset.set_index(
-        np.arange(len(dataset))
-    ).raw_path
-    data_pretty["Ground Truth"] = dataset.set_index(
+    dataf["Input Image"] = dataset.set_index(np.arange(len(dataset))).raw_path
+    dataf["Ground Truth"] = dataset.set_index(
         np.arange(len(dataset))
     ).mask_path
 
-    data_pretty.to_csv(save_folder + "/metrics_pretty.csv")
-    data_info_pretty.to_csv(save_folder + "/metrics_summary_pretty.csv")
+    dataf.to_csv(save_folder + "/metrics_pretty.csv")
+    data_infof.to_csv(save_folder + "/metrics_summary_pretty.csv")
 
-    data_pretty_sorted = data_pretty.sort_values(by=sorting_metric)
+    data_pretty_sorted = dataf.sort_values(by=sorting_metric)
 
-    data_pretty_sorted.to_csv(save_folder + "/metrics_sorted_avg_iou.csv")
+    # data_pretty_sorted.to_csv(save_folder + "/metrics_sorted.csv")
 
-    if return_formatted:
-        return data_pretty, data_info_pretty, data_pretty_sorted
-    else:
-        return
+    return dataf, data_infof, data_pretty_sorted
 
 
 def get_statistics(iou_list, save_folder, dpi=400, ci=None):

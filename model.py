@@ -13,7 +13,9 @@ import os
 
 import dseg.manager as man
 import dseg.visualize as vis
+from dseg.visualize import QualityAssurance
 import dseg.nets as nets
+
 
 # from IPython.display import Image
 
@@ -42,6 +44,17 @@ class Segmenter:
 
         self.epoch_results = None
 
+        self.data = None
+        self.data_info = None
+        self.dataf = None
+        self.data_infof = None
+        self.data_sorted = None
+
+        self.b_ds_ready = False
+        self.b_compiled = False
+        self.b_fitted = False
+        self.b_analysed = False
+
         #### create folder and update model name
         k = 0
         self.model_name = self.model_name + "_" + str(k)
@@ -56,7 +69,7 @@ class Segmenter:
         os.makedirs(self.model_name)
         ####
 
-        self.iou_list = None
+        self.stats_list = None
 
     def get_ds(self, ds):
         self.trn_dataset = ds[0]
@@ -104,6 +117,8 @@ class Segmenter:
             self.stt_dataset,
         )
 
+        self.b_ds_ready = True
+
     def compile(self):
         if self.setup.model_type == "unet":
             self.model = nets.unet_12(
@@ -127,6 +142,7 @@ class Segmenter:
                 label_amount=3,
                 node_type=self.setup.node_type,
                 use_bn=self.setup.use_bn,
+                depth=self.setup.depth,
                 pool_size=self.setup.pool_size,
                 concat_all=self.setup.concat_all,
             )
@@ -156,7 +172,11 @@ class Segmenter:
             ),
         ]
 
+        self.b_compiled = True
+
     def fit(self):
+        """Trains the model with the train dataset partition"""
+
         self.history = self.model.fit(
             self.trn_gen,
             epochs=self.setup.epochs,
@@ -166,13 +186,59 @@ class Segmenter:
 
         self.model.save(self.model_name + "/model.h5")
 
-    def plot_model(
+        self.b_fitted = True
+
+    def run_analysis(self):
+        """Run analysis on model quality"""
+
+        if not self.b_fitted:
+            raise ValueError("Model not fitted")
+
+        print("\n\nEvaluating model " + self.model_name + ":\n\n")
+        results = self.model.evaluate(self.tst_gen)
+        print("\nEvaluation results:", results)
+
+        self.epoch_results = vis.plot_training(self.history, self.model_name)
+
+        print("\n\nRetrieving model statistics:\n\n")
+
+        self.data, self.data_info = QualityAssurance.retrieve_stats(
+            model=self.model,
+            stat_gen=self.stt_gen,
+            dataset=self.stt_dataset,
+        )
+
+        (
+            self.dataf,
+            self.data_infof,
+            self.data_sorted,
+        ) = QualityAssurance.format_table(
+            data=self.data,
+            data_info=self.data_info,
+            dataset=self.stt_dataset,
+            save_folder=self.model_name,
+        )
+
+        self.b_analysed = True
+
+    def save_model_plot(
         self,
         show_shapes=False,
         show_dtype=False,
         show_layer_names=True,
         rankdir="TB",
     ):
+        """
+
+        :param show_shapes:
+        :param show_dtype:
+        :param show_layer_names:
+        :param rankdir:
+        :return:
+        """
+
+        if not self.b_compiled:
+            raise ValueError("Model not compiled")
 
         tf.keras.utils.plot_model(
             model=self.model,
@@ -218,9 +284,22 @@ class Segmenter:
             dpi=192,
         )
 
-    # return plot
+    def save_metrics(self):
 
-    def analisys(self, preds_amount=None, bad_preds_amount=None):
+        if not self.b_analysed:
+            raise ValueError("Model not analysed.")
+
+        self.dataf.to_csv(self.model_name + "/metrics.csv")
+        self.data_infof.to_csv(self.model_name + "/metrics_summary.csv")
+        self.data_sorted.to_csv(self.model_name + "/metrics_sorted.csv")
+
+    def save_examples(
+        self,
+        preds_amount=None,
+        bad_preds_amount=None,
+    ):
+        if not self.b_analysed:
+            raise ValueError("Model not analysed")
 
         if preds_amount is None:
             preds_amount = self.setup.preds_amount
@@ -228,42 +307,12 @@ class Segmenter:
         if bad_preds_amount is None:
             bad_preds_amount = self.setup.bad_preds_amount
 
-        print("\n\nEvaluating model " + self.model_name + ":\n\n")
-        results = self.model.evaluate(self.tst_gen)
-        print("\nEvaluation results:", results)
-
-        self.epoch_results = vis.plot_training(self.history, self.model_name)
-
-        print("\n\nRetrieving model statistics:\n\n")
-
-        self.iou_list = vis.retrieve_stats(
-            model=self.model,
-            stat_gen=self.stt_gen,
-            dataset=self.stt_dataset,
-        )
-
-        self.data, self.data_info = vis.get_statistics(
-            self.iou_list, self.model_name
-        )
-
-        (
-            self.data_pretty,
-            self.data_info_pretty,
-            data_sorted,
-        ) = vis.format_table(
-            self.data,
-            self.data_info,
-            self.stt_dataset,
-            self.model_name,
-            return_formatted=True,
-        )
-
         print("\n\nRetrieving", preds_amount, "predictions:\n\n")
 
         vis.save_preds(
             model=self.model,
             stat_gen=self.stt_gen,
-            data=self.data_pretty,
+            data=self.dataf,
             save_folder=self.model_name,
             amount=preds_amount,
             name_format=self.setup.name_format,
@@ -275,7 +324,7 @@ class Segmenter:
 
         vis.get_bad_preds(
             model=self.model,
-            data_sorted=data_sorted,
+            data_sorted=self.data_sorted,
             save_folder=self.model_name,
             image_size=self.setup.image_size,
             amount=bad_preds_amount,
