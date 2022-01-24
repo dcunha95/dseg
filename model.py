@@ -77,21 +77,11 @@ class Segmenter:
         self.tst_dataset = ds[2]
         self.stt_dataset = ds[3]
 
-        min_bs = min(
-            len(ds[0]),
-            len(ds[1]),
-            len(ds[2]),
-            len(ds[3]),
-            self.setup.batch_size,
-        )
+        min_bs = min(len(ds[0]), len(ds[1]), len(ds[2]), len(ds[3]), self.setup.batch_size)
 
         if min_bs != self.setup.batch_size:
             self.setup.batch_size = min_bs
-            print(
-                "batch_size too big, changing to ",
-                min_bs,
-                sep="",
-            )
+            print("batch_size too big, changing to ", min_bs, sep="")
 
         self.trn_gen = man.KerasManager(
             self.setup.batch_size,
@@ -164,25 +154,14 @@ class Segmenter:
             metrics=[tf.keras.metrics.MeanIoU(num_classes=3)],
             # run_eagerly=True,
         )
-        self.callbacks = [
-            tf.keras.callbacks.ModelCheckpoint(
-                self.model_name + "/model.h5",
-                save_best_only=True,
-                monitor="val_mean_io_u",
-            ),
-        ]
+        self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
 
         self.b_compiled = True
 
     def fit(self):
         """Trains the model with the train dataset partition"""
 
-        self.history = self.model.fit(
-            self.trn_gen,
-            epochs=self.setup.epochs,
-            validation_data=self.val_gen,
-            callbacks=self.callbacks,
-        )
+        self.history = self.model.fit(self.trn_gen, epochs=self.setup.epochs, validation_data=self.val_gen, callbacks=self.callbacks)
 
         self.model.save(self.model_name + "/model.h5")
 
@@ -202,17 +181,9 @@ class Segmenter:
 
         print("\n\nRetrieving model statistics:\n\n")
 
-        self.data, self.data_info = QualityAssurance.retrieve_stats(
-            model=self.model,
-            stat_gen=self.stt_gen,
-            dataset=self.stt_dataset,
-        )
+        self.data, self.data_info = QualityAssurance.retrieve_stats(model=self.model, stat_gen=self.stt_gen, dataset=self.stt_dataset)
 
-        (
-            self.dataf,
-            self.data_infof,
-            self.data_sorted,
-        ) = QualityAssurance.format_table(
+        (self.dataf, self.data_infof, self.data_sorted,) = QualityAssurance.format_table(
             data=self.data,
             data_info=self.data_info,
             dataset=self.stt_dataset,
@@ -292,6 +263,13 @@ class Segmenter:
         self.dataf.to_csv(self.model_name + "/metrics.csv")
         self.data_infof.to_csv(self.model_name + "/metrics_summary.csv")
         self.data_sorted.to_csv(self.model_name + "/metrics_sorted.csv")
+
+    def save_plots(self):
+
+        if not self.b_analysed:
+            raise ValueError("Model not analysed.")
+
+        vis.VisualizerAssist.save_plots(data=self.data, data_info=self.data_info, save_folder=self.model_name, dpi=400, ci=None)
 
     def save_examples(
         self,
