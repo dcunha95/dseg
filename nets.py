@@ -1286,21 +1286,20 @@ def unet_12(
     x = inputs
 
     nodes = [[] for i in range(depth)]
-
     # descend
     for k in range(depth):
         name = "bm_" + str(k) + "_0"
         # print(name)
-        shape = (
-            int(input_shape[0] / (pool_size ** k)),
-            int(input_shape[1] / (pool_size ** k)),
-            int(input_shape[2] * max(1, (b_fil * k))),
-        )
+        # shape = (
+        #     int(input_shape[0] / (pool_size ** k)),
+        #     int(input_shape[1] / (pool_size ** k)),
+        #     int(input_shape[2] * max(1, (b_fil * 2 ** k))),
+        # )
         # print("node_entrance:", shape)
         # print("x.shape:", x.shape)
 
         node = get_base(
-            input_shape=shape,
+            input_shape=x.shape[1:],
             level=k,
             b_fil=b_fil,
             kernel_size=kernel_size,
@@ -1367,15 +1366,15 @@ def unet_pp_11(
     for i in range(depth):
         name = "bm_" + str(i) + "_0"
         # print(name)
-        shape = (
-            int(input_shape[0] / (pool_size ** i)),
-            int(input_shape[1] / (pool_size ** i)),
-            int(input_shape[2] * max(1, (b_fil * i))),
-        )
         # print("node_entrance:", shape)
         # print("x.shape:", x.shape)
+        # shape = (
+        #     int(input_shape[0] / (pool_size ** i)),
+        #     int(input_shape[1] / (pool_size ** i)),
+        #     b_fil * 2 ** i if i == 0 else 1,
+        # )
         node = get_base(
-            input_shape=shape,
+            input_shape=x.shape[1:],
             level=i,
             b_fil=b_fil,
             kernel_size=kernel_size,
