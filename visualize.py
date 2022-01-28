@@ -194,7 +194,6 @@ class QualityAssurance:
 
         return data, data_info
 
-
     @staticmethod
     def format_table(
         data,
@@ -397,7 +396,7 @@ class VisualizerAssist:
             os.makedirs(plots_folder)
 
         # no mean
-        for bw in ['scott', 0.01, 0.1, 0.2]:
+        for bw in ["scott", 0.01, 0.1, 0.2]:
             graph = sns.violinplot(data=data.loc[:, "Lumen":"Vessel"], saturation=0.9, bw=bw, gridsize=400, cut=0)
             graph.set(ylim=(0, 1.03))
             graph.get_figure().savefig(plots_folder + "/iou_violin_bw_" + str(bw) + ".png", format="png", dpi=dpi)
@@ -417,7 +416,7 @@ class VisualizerAssist:
         idx = pd.IndexSlice
         iou_cols = idx["Lumen", "Plaque", "Vessel", "Average"]
 
-        for bw in ['scott', 0.01, 0.1, 0.2]:
+        for bw in ["scott", 0.01, 0.1, 0.2]:
             graph = sns.violinplot(data=data.loc[:, iou_cols], saturation=0.9, bw=bw, gridsize=400, cut=0)
             graph.set(ylim=(0, 1.03))
             graph.get_figure().savefig(plots_folder + "/iou_violin_bw_" + str(bw) + "_avg.png", format="png", dpi=dpi)
@@ -521,29 +520,40 @@ def save_output(
     if print_options[0]:
         img = PIL.ImageOps.autocontrast(tf.keras.preprocessing.image.array_to_img(pred))
         img.save(save_folder + "/predictions" + "/" + name + "_raw.png", format="png")
+
     if print_options[1]:
         img = np.array(np.argmax(pred, axis=-1), dtype="uint8")
         img = np.expand_dims((img == 1).astype("uint8") * 100 + (img == 2).astype("uint8") * 255, axis=-1)
         img = tf.keras.preprocessing.image.array_to_img(img, scale=False)
         img.save(save_folder + "/predictions" + "/" + name + "_output.png", format="png")
+
     if print_options[2]:
         img = tf.keras.preprocessing.image.load_img(input_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest")
         img.save(save_folder + "/predictions" + "/" + name + "_input.png", format="png")
+
     if print_options[3]:
         img = tf.keras.preprocessing.image.load_img(input_img_path)
         img.save(save_folder + "/predictions" + "/" + name + "_input_original.png", format="png")
+
     if print_options[4]:
         img = tf.keras.preprocessing.image.load_img(
             target_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest"
         )
         img.save(save_folder + "/predictions" + "/" + name + "_gt.png", format="png")
+
     if print_options[5]:
         img = tf.keras.preprocessing.image.load_img(target_img_path)
         img.save(save_folder + "/predictions" + "/" + name + "_gt_original.png", format="png")
+
     return
 
 
 def get_iou(y_pred, y_true):
+    """
+    :param y_pred:
+    :param y_true:
+    :return:
+    """
     inter = np.count_nonzero(np.logical_and(y_pred, y_true).astype("uint8"))
     union = np.count_nonzero(np.logical_or(y_pred, y_true).astype("uint8"))
     return inter / union
