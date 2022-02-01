@@ -137,6 +137,21 @@ class Segmenter:
                 concat_all=self.setup.concat_all,
             )
 
+        if self.setup.model_type == "unet++s":
+            self.model = nets.unet_pp_12(
+                input_shape=self.setup.input_shape,
+                b_fil=self.setup.b_fil,
+                kernel_size=self.setup.kernel_size,
+                dropout_amount=self.setup.dropout_amount,
+                label_amount=3,
+                node_type=self.setup.node_type,
+                use_bn=self.setup.use_bn,
+                depth=self.setup.depth,
+                pool_size=self.setup.pool_size,
+                concat_all=self.setup.concat_all,
+                down_size=2,
+            )
+
         if self.setup.model_type == "old_unet":
             self.model = nets.unet_4(
                 input_shape=self.setup.input_shape,

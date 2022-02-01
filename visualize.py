@@ -156,7 +156,7 @@ class QualityAssurance:
                 stats_list[j + base_j] = QualityAssurance.prediction_metrics(preds[j], dataset.mask_path.iloc[j + base_j])
 
         data = pd.DataFrame(
-            np.array(stats_list, dtype="float64"),
+            np.array(stats_list, dtype="float32"),
             columns=[
                 "Average",
                 "Outer",
@@ -772,7 +772,7 @@ def get_statistics(iou_list, save_folder, dpi=400, ci=None):
     if not os.path.exists(plots_folder):
         os.makedirs(plots_folder)
     data = pd.DataFrame(
-        np.array(iou_list, dtype="float64"),
+        np.array(iou_list, dtype="float32"),
         columns=[
             "Average",
             "Outer",

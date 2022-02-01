@@ -48,7 +48,7 @@ class KerasManager(tf.keras.utils.Sequence):
             x[j] = np.expand_dims(img, 2)
             j += 1
 
-        x = x.astype("float64")
+        x = x.astype("float32")
         if self.normalize == True:
             x = x / 255.0
 
@@ -86,7 +86,7 @@ class KerasManager(tf.keras.utils.Sequence):
 
             j += 1
 
-        y = y.astype("float64")
+        y = y.astype("float32")
 
         if self.sample_weight != None:
 
