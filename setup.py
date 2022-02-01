@@ -81,11 +81,12 @@ class NetSetup:
             dropout_amount=0.3,
             use_bn=True,
             sample_weight=None,
+            down_size=None,
     ):
         # Net related:
-        self.model_type = model_type
+        self.model_type = model_type  # neural network macro structure
         self.depth = depth
-        self.pool_size = pool_size
+        self.pool_size = pool_size  # MaxPooling between levels
         self.concat_all = concat_all
         self.node_type = node_type
         self.image_size = image_size
@@ -95,3 +96,4 @@ class NetSetup:
         self.dropout_amount = dropout_amount
         self.use_bn = use_bn
         self.sample_weight = sample_weight
+        self.down_size = down_size  # reduces image_size in the beginning of the model and increases its size back before exiting
