@@ -28,6 +28,7 @@ class Setup:
             batch_size=40,
             epochs=20,
             optimizer="adam",
+            learning_rate=0.001,
             loss="categorical_crossentropy",
             preds_amount=50,
             bad_preds_amount=50,
@@ -56,6 +57,7 @@ class Setup:
         self.batch_size = batch_size
         self.epochs = epochs
         self.optimizer = optimizer
+        self.learning_rate = learning_rate
         self.loss = loss
 
         # analysis related:
