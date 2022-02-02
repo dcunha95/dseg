@@ -183,7 +183,7 @@ class Segmenter:
                 amsgrad=False,
             )
 
-            if tf.keras.mixed_precision.global_policy().name == 'mixed_float16':
+            if tf.keras.mixed_precision.global_policy().name == "mixed_float16":
                 print("Using tf.keras.mixed_precision.LossScaleOptimizer")
                 opt = tf.keras.mixed_precision.LossScaleOptimizer(opt)
 
@@ -193,7 +193,17 @@ class Segmenter:
             metrics=[tf.keras.metrics.MeanIoU(num_classes=3)],
             # run_eagerly=True,
         )
+
         self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
+
+        # arrumar gambiarra
+        def scheduler(epoch, lr):
+            if epoch < 40:
+                return lr
+            else:
+                return lr * tf.math.exp(-0.1)
+
+        self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
 
         self.b_compiled = True
 
