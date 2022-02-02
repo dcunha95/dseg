@@ -163,8 +163,32 @@ class Segmenter:
                 use_bn=self.setup.use_bn,
             )
 
+        if self.setup.model_type == "old_unet++":
+            self.model = nets.unet_pp_10(
+                input_shape=self.setup.input_shape,
+                b_fil=self.setup.b_fil,
+                kernel_size=self.setup.kernel_size,
+                dropout_amount=self.setup.dropout_amount,
+                label_amount=3,
+                node_type=4,
+                use_bn=self.setup.use_bn,
+            )
+
+        if self.setup.optimizer == "adam":
+            opt = tf.keras.optimizers.Adam(
+                learning_rate=self.setup.learning_rate,
+                beta_1=0.9,
+                beta_2=0.999,
+                epsilon=1e-07,
+                amsgrad=False,
+            )
+
+            if tf.keras.mixed_precision.global_policy().name == 'mixed_float16':
+                print("Using tf.keras.mixed_precision.LossScaleOptimizer")
+                opt = tf.keras.mixed_precision.LossScaleOptimizer(opt)
+
         self.model.compile(
-            optimizer=self.setup.optimizer,
+            optimizer=opt,
             loss=self.setup.loss,
             metrics=[tf.keras.metrics.MeanIoU(num_classes=3)],
             # run_eagerly=True,

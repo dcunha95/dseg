@@ -1398,7 +1398,7 @@ def unet_pp_11(
     outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
     outputs = ly.Activation("softmax", dtype="float32")(outputs)
 
-    model = tf.keras.Model(inputs, outputs, name="unet_12")
+    model = tf.keras.Model(inputs, outputs, name="unet_pp_11")
     return model
 
 def unet_pp_12(
@@ -1484,5 +1484,5 @@ def unet_pp_12(
 
     outputs = ly.Activation("softmax", dtype="float32")(outputs)
 
-    model = tf.keras.Model(inputs, outputs, name="unet_12")
+    model = tf.keras.Model(inputs, outputs, name="unet_pp_12")
     return model
