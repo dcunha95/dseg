@@ -197,13 +197,14 @@ class Segmenter:
         self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
 
         # arrumar gambiarra
-        def scheduler(epoch, lr):
-            if epoch < 40:
-                return lr
-            else:
-                return lr * tf.math.exp(-0.1)
+        if self.setup.lr_decay_after_epoch is not None:
+            def scheduler(epoch, lr):
+                if epoch < self.setup.lr_decay_after_epoch:
+                    return lr
+                else:
+                    return lr * tf.math.exp(-0.1)
 
-        self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
+            self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
 
         self.b_compiled = True
 

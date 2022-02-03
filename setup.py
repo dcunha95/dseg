@@ -29,6 +29,7 @@ class Setup:
             epochs=20,
             optimizer="adam",
             learning_rate=0.001,
+            lr_decay_after_epoch=None,
             loss="categorical_crossentropy",
             preds_amount=50,
             bad_preds_amount=50,
@@ -58,6 +59,7 @@ class Setup:
         self.epochs = epochs
         self.optimizer = optimizer
         self.learning_rate = learning_rate
+        self.lr_decay_after_epoch = lr_decay_after_epoch
         self.loss = loss
 
         # analysis related:

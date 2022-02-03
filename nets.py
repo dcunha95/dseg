@@ -1422,6 +1422,7 @@ def unet_pp_12(
     #downsize
     if down_size is not None:
         x = ly.Conv2D(filters=1, kernel_size=(down_size, down_size), strides=down_size)(x)
+        # x = ly.MaxPool2D(down_size)(x)
 
     nodes = [[] for i in range(depth)]
 
