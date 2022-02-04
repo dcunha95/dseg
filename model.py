@@ -137,6 +137,20 @@ class Segmenter:
                 concat_all=self.setup.concat_all,
             )
 
+        if self.setup.model_type == "unets":
+            self.model = nets.unet_13(
+                input_shape=self.setup.input_shape,
+                b_fil=self.setup.b_fil,
+                kernel_size=self.setup.kernel_size,
+                dropout_amount=self.setup.dropout_amount,
+                label_amount=3,
+                node_type=self.setup.node_type,
+                use_bn=self.setup.use_bn,
+                depth=self.setup.depth,
+                pool_size=self.setup.pool_size,
+                down_size=2,
+            )
+
         if self.setup.model_type == "unet++s":
             self.model = nets.unet_pp_12(
                 input_shape=self.setup.input_shape,
@@ -196,13 +210,14 @@ class Segmenter:
 
         self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
 
-        # arrumar gambiarra
+        # tidy_this_mess
         if self.setup.lr_decay_after_epoch is not None:
+
             def scheduler(epoch, lr):
                 if epoch < self.setup.lr_decay_after_epoch:
                     return lr
                 else:
-                    return lr * tf.math.exp(-0.1)
+                    return lr * tf.math.exp(-self.setup.lr_decay)
 
             self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
 

@@ -11,30 +11,31 @@ import os
 
 class Setup:
     def __init__(
-            self,
-            split=[0.6, 0.2, 0.2],
-            dataset_percent=0.1,
-            model_type="unet",
-            depth=4,
-            pool_size=2,
-            concat_all=True,
-            node_type=4,
-            image_size=(16, 16),
-            b_fil=2,
-            kernel_size=3,
-            dropout_amount=0.3,
-            use_bn=True,
-            sample_weight=None,
-            batch_size=40,
-            epochs=20,
-            optimizer="adam",
-            learning_rate=0.001,
-            lr_decay_after_epoch=None,
-            loss="categorical_crossentropy",
-            preds_amount=50,
-            bad_preds_amount=50,
-            print_options=[True, True, True, True, True, True],
-            name_format=["Average", "Name"],
+        self,
+        split=[0.6, 0.2, 0.2],
+        dataset_percent=0.1,
+        model_type="unet",
+        depth=4,
+        pool_size=2,
+        concat_all=True,
+        node_type=4,
+        image_size=(16, 16),
+        b_fil=2,
+        kernel_size=3,
+        dropout_amount=0.3,
+        use_bn=True,
+        sample_weight=None,
+        batch_size=40,
+        epochs=20,
+        optimizer="adam",
+        learning_rate=0.001,
+        lr_decay_after_epoch=None,
+        lr_decay=0.05,
+        loss="categorical_crossentropy",
+        preds_amount=50,
+        bad_preds_amount=50,
+        print_options=[True, True, True, True, True, True],
+        name_format=["Average", "Name"],
     ):
         # dataset related:
         self.split = split
@@ -60,6 +61,7 @@ class Setup:
         self.optimizer = optimizer
         self.learning_rate = learning_rate
         self.lr_decay_after_epoch = lr_decay_after_epoch
+        self.lr_decay = lr_decay
         self.loss = loss
 
         # analysis related:
@@ -73,19 +75,19 @@ class Setup:
 
 class NetSetup:
     def __init__(
-            self,
-            model_type="unet",
-            depth=4,
-            pool_size=2,
-            concat_all=True,
-            node_type=4,
-            image_size=(16, 16),
-            b_fil=2,
-            kernel_size=3,
-            dropout_amount=0.3,
-            use_bn=True,
-            sample_weight=None,
-            down_size=None,
+        self,
+        model_type="unet",
+        depth=4,
+        pool_size=2,
+        concat_all=True,
+        node_type=4,
+        image_size=(16, 16),
+        b_fil=2,
+        kernel_size=3,
+        dropout_amount=0.3,
+        use_bn=True,
+        sample_weight=None,
+        down_size=None,
     ):
         # Net related:
         self.model_type = model_type  # neural network macro structure

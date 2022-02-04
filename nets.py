@@ -1327,6 +1327,87 @@ def unet_12(
     return model
 
 
+def unet_13(
+    input_shape,
+    b_fil,
+    kernel_size,
+    depth=5,
+    dropout_amount=0.2,
+    label_amount=3,
+    node_type=0,
+    use_bn=False,
+    pool_size=2,
+    down_size=None,
+):
+
+    # print("input_shape:", input_shape)
+    inputs = tf.keras.Input(input_shape)
+    x = inputs
+
+    # downsize
+    if down_size is not None:
+        x = ly.Conv2D(filters=1, kernel_size=(down_size, down_size), strides=down_size)(x)
+        # x = ly.MaxPool2D(down_size)(x)
+
+    nodes = [[] for i in range(depth)]
+    # descend
+    for k in range(depth):
+        name = "bm_" + str(k) + "_0"
+        # print(name)
+        # shape = (
+        #     int(input_shape[0] / (pool_size ** k)),
+        #     int(input_shape[1] / (pool_size ** k)),
+        #     int(input_shape[2] * max(1, (b_fil * 2 ** k))),
+        # )
+        # print("node_entrance:", shape)
+        # print("x.shape:", x.shape)
+
+        node = get_base(
+            input_shape=x.shape[1:],
+            level=k,
+            b_fil=b_fil,
+            kernel_size=kernel_size,
+            dropout_amount=dropout_amount,
+            node_type=node_type,
+            use_bn=use_bn,
+            name=name,
+        )(x)
+        nodes[k].append(node)
+        # print("node_exit:", node.shape)
+        x = ly.MaxPool2D(pool_size=pool_size, padding="same")(nodes[k][-1])
+        # print("maxpool:", x.shape)
+
+    for k in range(depth - 2, -1, -1):
+        # print(k)
+        name = "bm_" + str(k) + "_1"
+        x = ly.concatenate([nodes[k][-1], ly.UpSampling2D(2)(nodes[k + 1][-1])])
+
+        node = get_base(
+            input_shape=x.shape[1:],
+            level=k,
+            b_fil=b_fil,
+            kernel_size=kernel_size,
+            dropout_amount=dropout_amount,
+            node_type=node_type,
+            use_bn=use_bn,
+            name=name,
+        )(x)
+        nodes[k].append(node)
+
+    outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+
+    # upsize
+    if down_size is not None:
+        # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
+        outputs = ly.UpSampling2D(down_size, interpolation="bilinear")(outputs)
+        # outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(outputs)
+
+    outputs = ly.Activation("softmax", dtype="float32")(outputs)
+
+    model = tf.keras.Model(inputs, outputs, name="unet_13")
+    return model
+
+
 def unet_pp_11(
     input_shape,
     b_fil,
@@ -1401,6 +1482,7 @@ def unet_pp_11(
     model = tf.keras.Model(inputs, outputs, name="unet_pp_11")
     return model
 
+
 def unet_pp_12(
     input_shape,
     b_fil,
@@ -1419,7 +1501,7 @@ def unet_pp_12(
     inputs = tf.keras.Input(input_shape)
     x = inputs
 
-    #downsize
+    # downsize
     if down_size is not None:
         x = ly.Conv2D(filters=1, kernel_size=(down_size, down_size), strides=down_size)(x)
         # x = ly.MaxPool2D(down_size)(x)
@@ -1480,7 +1562,7 @@ def unet_pp_12(
     # upsize
     if down_size is not None:
         # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
-        outputs = ly.UpSampling2D(down_size, interpolation='bilinear')(outputs)
+        outputs = ly.UpSampling2D(down_size, interpolation="bilinear")(outputs)
         # outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(outputs)
 
     outputs = ly.Activation("softmax", dtype="float32")(outputs)
