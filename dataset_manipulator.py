@@ -28,7 +28,7 @@ class DataManipulator:
             trn_dataset,
             val_dataset,
             tst_dataset,
-        ) = dc.split_files(files, self.setup.dataset_percent, split=self.setup.split)
+        ) = dc.split_files(files, self.setup.pipeline_config.dataset_percent, split=self.setup.pipeline_config.split)
 
         stat_dataset = val_dataset
 
@@ -48,9 +48,9 @@ class DataManipulator:
         test_files = dc.load_files(test_file_name, randomize=False)
         stat_files = dc.load_files(stat_file_name, randomize=False)
 
-        trn_dataset = dc.split_files(train_files, self.setup.dataset_percent, do_split=False)
-        val_dataset = dc.split_files(val_files, self.setup.dataset_percent, do_split=False)
-        tst_dataset = dc.split_files(test_files, self.setup.dataset_percent, do_split=False)
+        trn_dataset = dc.split_files(train_files, self.setup.pipeline_config.dataset_percent, do_split=False)
+        val_dataset = dc.split_files(val_files, self.setup.pipeline_config.dataset_percent, do_split=False)
+        tst_dataset = dc.split_files(test_files, self.setup.pipeline_config.dataset_percent, do_split=False)
         stat_dataset = dc.split_files(stat_files, 1, do_split=False)
 
         return trn_dataset, val_dataset, tst_dataset, stat_dataset

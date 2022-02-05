@@ -12,18 +12,73 @@ import os
 class Setup:
     def __init__(
         self,
+        pipeline_config,
+        net_config,
+        fit_config,
+    ):
+        self.pipeline_config = pipeline_config
+        self.net_config = net_config
+        self.fit_config = fit_config
+
+
+class PipelineConfig:
+    def __init__(
+        self,
         split=[0.6, 0.2, 0.2],
         dataset_percent=0.1,
+        preds_amount=50,
+        bad_preds_amount=50,
+        print_options=[True, True, True, True, True, True],
+        name_format=["Average", "Name"],
+    ):
+        # pipeline related:
+        self.split = split
+        self.dataset_percent = dataset_percent
+        self.preds_amount = preds_amount
+        self.bad_preds_amount = bad_preds_amount
+        self.print_options = print_options  # print options: [raw, output, input, input_original, gt, gt_original]
+        self.name_format = name_format
+
+
+class NetConfig:
+    def __init__(
+        self,
         model_type="unet",
         depth=4,
         pool_size=2,
         concat_all=True,
         node_type=4,
         image_size=(16, 16),
-        b_fil=2,
+        down_size=None,
+        base_filters=2,
         kernel_size=3,
         dropout_amount=0.3,
         use_bn=True,
+        label_amount=3,
+        kernel_initializer="glorot_uniform",
+        bias_initializer="zeros",
+    ):
+        # Net related:
+        self.model_type = model_type
+        self.depth = depth
+        self.pool_size = pool_size
+        self.concat_all = concat_all
+        self.node_type = node_type
+        self.image_size = image_size
+        self.down_size = down_size
+        self.input_shape = self.image_size + (1,)
+        self.base_filters = base_filters
+        self.kernel_size = kernel_size
+        self.dropout_amount = dropout_amount
+        self.use_bn = use_bn
+        self.label_amount = label_amount
+        self.kernel_initializer = kernel_initializer
+        self.bias_initializer = bias_initializer
+
+
+class FitConfig:
+    def __init__(
+        self,
         sample_weight=None,
         batch_size=40,
         epochs=20,
@@ -32,28 +87,7 @@ class Setup:
         lr_decay_after_epoch=None,
         lr_decay=0.05,
         loss="categorical_crossentropy",
-        preds_amount=50,
-        bad_preds_amount=50,
-        print_options=[True, True, True, True, True, True],
-        name_format=["Average", "Name"],
     ):
-        # dataset related:
-        self.split = split
-        self.dataset_percent = dataset_percent
-
-        # Net related:
-        self.model_type = model_type
-        self.depth = depth
-        self.pool_size = pool_size
-        self.concat_all = concat_all
-        self.node_type = node_type
-        self.image_size = image_size
-        self.input_shape = self.image_size + (1,)
-        self.b_fil = b_fil
-        self.kernel_size = kernel_size
-        self.dropout_amount = dropout_amount
-        self.use_bn = use_bn
-
         # fit related:
         self.sample_weight = sample_weight
         self.batch_size = batch_size
@@ -63,43 +97,3 @@ class Setup:
         self.lr_decay_after_epoch = lr_decay_after_epoch
         self.lr_decay = lr_decay
         self.loss = loss
-
-        # analysis related:
-        self.preds_amount = preds_amount
-        self.bad_preds_amount = bad_preds_amount
-
-        # print options: [raw, output, input, input_original, gt, gt_original]
-        self.print_options = print_options
-        self.name_format = name_format
-
-
-class NetSetup:
-    def __init__(
-        self,
-        model_type="unet",
-        depth=4,
-        pool_size=2,
-        concat_all=True,
-        node_type=4,
-        image_size=(16, 16),
-        b_fil=2,
-        kernel_size=3,
-        dropout_amount=0.3,
-        use_bn=True,
-        sample_weight=None,
-        down_size=None,
-    ):
-        # Net related:
-        self.model_type = model_type  # neural network macro structure
-        self.depth = depth
-        self.pool_size = pool_size  # MaxPooling between levels
-        self.concat_all = concat_all
-        self.node_type = node_type
-        self.image_size = image_size
-        self.input_shape = self.image_size + (1,)
-        self.b_fil = b_fil
-        self.kernel_size = kernel_size
-        self.dropout_amount = dropout_amount
-        self.use_bn = use_bn
-        self.sample_weight = sample_weight
-        self.down_size = down_size  # reduces image_size in the beginning of the model and increases its size back before exiting

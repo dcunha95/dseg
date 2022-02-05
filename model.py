@@ -38,6 +38,8 @@ class Segmenter:
         self.tst_gen = None
         self.stt_gen = None
 
+        self.metrics = [tf.keras.metrics.MeanIoU(num_classes=self.setup.net_config.label_amount)]
+
         self.history = None
         self.callbacks = None
         self.model = None
@@ -51,7 +53,6 @@ class Segmenter:
         self.data_sorted = None
 
         self.b_ds_ready = False
-        self.b_compiled = False
         self.b_fitted = False
         self.b_analysed = False
 
@@ -71,126 +72,94 @@ class Segmenter:
 
         self.stats_list = None
 
+        if self.setup.net_config.model_type == "unet":
+            self.model = nets.unet_14(net_config=self.setup.net_config)
+
+        if self.setup.net_config.model_type == "unet++":
+            self.model = nets.unet_pp_13(net_config=self.setup.net_config)
+
+        if self.setup.net_config.model_type == "old_unet":
+            self.model = nets.unet_4(
+                input_shape=self.setup.net_config.input_shape,
+                base_filters=self.setup.net_config.base_filters,
+                kernel_size=self.setup.net_config.kernel_size,
+                dropout_amount=self.setup.net_config.dropout_amount,
+                label_amount=3,
+                node_type=4,
+                use_bn=self.setup.net_config.use_bn,
+            )
+
+        if self.setup.net_config.model_type == "old_unet++":
+            self.model = nets.unet_pp_10(
+                input_shape=self.setup.net_config.input_shape,
+                base_filters=self.setup.net_config.base_filters,
+                kernel_size=self.setup.net_config.kernel_size,
+                dropout_amount=self.setup.net_config.dropout_amount,
+                label_amount=3,
+                node_type=4,
+                use_bn=self.setup.net_config.use_bn,
+            )
+
+        self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
+
+        # tidy_this_mess
+        if self.setup.fit_config.lr_decay_after_epoch is not None:
+
+            def scheduler(epoch, lr):
+                if epoch < self.setup.fit_config.lr_decay_after_epoch:
+                    return lr
+                else:
+                    return lr * tf.math.exp(-self.setup.fit_config.lr_decay)
+
+            self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
+
     def get_ds(self, ds):
         self.trn_dataset = ds[0]
         self.val_dataset = ds[1]
         self.tst_dataset = ds[2]
         self.stt_dataset = ds[3]
 
-        min_bs = min(len(ds[0]), len(ds[1]), len(ds[2]), len(ds[3]), self.setup.batch_size)
+        min_bs = min(len(ds[0]), len(ds[1]), len(ds[2]), len(ds[3]), self.setup.fit_config.batch_size)
 
-        if min_bs != self.setup.batch_size:
-            self.setup.batch_size = min_bs
+        if min_bs != self.setup.fit_config.batch_size:
+            self.setup.fit_config.batch_size = min_bs
             print("batch_size too big, changing to ", min_bs, sep="")
 
         self.trn_gen = man.KerasManager(
-            self.setup.batch_size,
-            self.setup.image_size,
+            self.setup.fit_config.batch_size,
+            self.setup.net_config.image_size,
             self.trn_dataset,
         )
 
         self.val_gen = man.KerasManager(
-            self.setup.batch_size,
-            self.setup.image_size,
+            self.setup.fit_config.batch_size,
+            self.setup.net_config.image_size,
             self.val_dataset,
         )
 
         self.tst_gen = man.KerasManager(
-            self.setup.batch_size,
-            self.setup.image_size,
+            self.setup.fit_config.batch_size,
+            self.setup.net_config.image_size,
             self.val_dataset,
         )
 
         self.stt_gen = man.KerasManager(
             10,
-            self.setup.image_size,
+            self.setup.net_config.image_size,
             self.stt_dataset,
         )
 
         self.b_ds_ready = True
 
-    def compile(self):
-        if self.setup.model_type == "unet":
-            self.model = nets.unet_12(
-                input_shape=self.setup.input_shape,
-                b_fil=self.setup.b_fil,
-                kernel_size=self.setup.kernel_size,
-                dropout_amount=self.setup.dropout_amount,
-                label_amount=3,
-                node_type=self.setup.node_type,
-                use_bn=self.setup.use_bn,
-                depth=self.setup.depth,
-                pool_size=self.setup.pool_size,
-            )
+    def fit(self, fit_config=None):
+        """Compile and train the model with the train dataset partition"""
 
-        if self.setup.model_type == "unet++":
-            self.model = nets.unet_pp_11(
-                input_shape=self.setup.input_shape,
-                b_fil=self.setup.b_fil,
-                kernel_size=self.setup.kernel_size,
-                dropout_amount=self.setup.dropout_amount,
-                label_amount=3,
-                node_type=self.setup.node_type,
-                use_bn=self.setup.use_bn,
-                depth=self.setup.depth,
-                pool_size=self.setup.pool_size,
-                concat_all=self.setup.concat_all,
-            )
+        if fit_config is None:
+            fit_config = self.setup.fit_config
 
-        if self.setup.model_type == "unets":
-            self.model = nets.unet_13(
-                input_shape=self.setup.input_shape,
-                b_fil=self.setup.b_fil,
-                kernel_size=self.setup.kernel_size,
-                dropout_amount=self.setup.dropout_amount,
-                label_amount=3,
-                node_type=self.setup.node_type,
-                use_bn=self.setup.use_bn,
-                depth=self.setup.depth,
-                pool_size=self.setup.pool_size,
-                down_size=2,
-            )
-
-        if self.setup.model_type == "unet++s":
-            self.model = nets.unet_pp_12(
-                input_shape=self.setup.input_shape,
-                b_fil=self.setup.b_fil,
-                kernel_size=self.setup.kernel_size,
-                dropout_amount=self.setup.dropout_amount,
-                label_amount=3,
-                node_type=self.setup.node_type,
-                use_bn=self.setup.use_bn,
-                depth=self.setup.depth,
-                pool_size=self.setup.pool_size,
-                concat_all=self.setup.concat_all,
-                down_size=2,
-            )
-
-        if self.setup.model_type == "old_unet":
-            self.model = nets.unet_4(
-                input_shape=self.setup.input_shape,
-                b_fil=self.setup.b_fil,
-                kernel_size=self.setup.kernel_size,
-                dropout_amount=self.setup.dropout_amount,
-                label_amount=3,
-                node_type=4,
-                use_bn=self.setup.use_bn,
-            )
-
-        if self.setup.model_type == "old_unet++":
-            self.model = nets.unet_pp_10(
-                input_shape=self.setup.input_shape,
-                b_fil=self.setup.b_fil,
-                kernel_size=self.setup.kernel_size,
-                dropout_amount=self.setup.dropout_amount,
-                label_amount=3,
-                node_type=4,
-                use_bn=self.setup.use_bn,
-            )
-
-        if self.setup.optimizer == "adam":
+        if fit_config.optimizer == "adam":
             opt = tf.keras.optimizers.Adam(
-                learning_rate=self.setup.learning_rate,
+                learning_rate=fit_config.learning_rate,
                 beta_1=0.9,
                 beta_2=0.999,
                 epsilon=1e-07,
@@ -203,34 +172,67 @@ class Segmenter:
 
         self.model.compile(
             optimizer=opt,
-            loss=self.setup.loss,
-            metrics=[tf.keras.metrics.MeanIoU(num_classes=3)],
-            # run_eagerly=True,
+            loss=fit_config.loss,
+            metrics=self.metrics,
         )
 
-        self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
-
-        # tidy_this_mess
-        if self.setup.lr_decay_after_epoch is not None:
-
-            def scheduler(epoch, lr):
-                if epoch < self.setup.lr_decay_after_epoch:
-                    return lr
-                else:
-                    return lr * tf.math.exp(-self.setup.lr_decay)
-
-            self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
-
-        self.b_compiled = True
-
-    def fit(self):
-        """Trains the model with the train dataset partition"""
-
-        self.history = self.model.fit(self.trn_gen, epochs=self.setup.epochs, validation_data=self.val_gen, callbacks=self.callbacks)
+        self.history = self.model.fit(
+            self.trn_gen,
+            epochs=self.setup.fit_config.epochs,
+            validation_data=self.val_gen,
+            callbacks=self.callbacks,
+        )
 
         self.model.save(self.model_name + "/model.h5")
 
         self.b_fitted = True
+
+    def update_trainable_params(self, state):
+
+        possible_states = {
+            "unet": ["train_all", "fine_tuning"],
+            "unet++": ["train_all", "fine_tuning", "hold_backbone", "train_outer_net"],
+            "ivus-unet++": [],
+        }
+
+        if state not in possible_states[self.setup.net_config.model_type]:
+            raise ValueError("Error updating trainable parameters: inappropriate state trying to be set.")
+
+        for layer in self.model.layers:
+            layer.trainable = False
+
+        if state == "train_all":
+            for layer in self.model.layers:
+                layer.trainable = True
+
+        if state == "fine_tuning":
+            for layer in self.model.layers:
+                if isinstance(layer, tf.keras.Model):
+                    for sublayer in layer.layers:
+                        if isinstance(sublayer, tf.keras.layers.BatchNormalization):
+                            sublayer.trainable = False
+                        else:
+                            sublayer.trainable = True
+
+                elif isinstance(layer, tf.keras.layers.BatchNormalization):
+                    layer.trainable = False
+                else:
+                    layer.trainable = True
+
+        if state == "hold_backbone":
+            for layer in self.model.layers:
+                layer.trainable = True
+
+            for i in range(self.setup.net_config.depth):
+                name = "bm_" + str(i) + "_0"
+                self.model.get_layer(name=name).trainable = False
+
+        if state == "train_outer_net":
+            for i in range(self.setup.net_config.depth):
+                name_left = "bm_" + str(i) + "_0"
+                name_right = "bm_" + str(i) + "_" + str(self.setup.net_config.depth-i-1)
+                self.model.get_layer(name=name_left).trainable = True
+                self.model.get_layer(name=name_right).trainable = True
 
     def run_analysis(self):
         """Run analysis on model quality"""
@@ -273,9 +275,6 @@ class Segmenter:
         :return:
         """
 
-        if not self.b_compiled:
-            raise ValueError("Model not compiled")
-
         tf.keras.utils.plot_model(
             model=self.model,
             to_file=self.model_name + "/model_expanded.png",
@@ -299,13 +298,13 @@ class Segmenter:
         )
 
         bmodel = nets.get_base(
-            input_shape=self.setup.input_shape,
+            input_shape=self.setup.net_config.input_shape,
             level=0,
-            b_fil=self.setup.b_fil,
-            kernel_size=self.setup.kernel_size,
-            dropout_amount=self.setup.dropout_amount,
-            node_type=self.setup.node_type,
-            use_bn=self.setup.use_bn,
+            base_filters=self.setup.net_config.base_filters,
+            kernel_size=self.setup.net_config.kernel_size,
+            dropout_amount=self.setup.net_config.dropout_amount,
+            node_type=self.setup.net_config.node_type,
+            use_bn=self.setup.net_config.use_bn,
             name="bm",
         )
 
@@ -341,14 +340,15 @@ class Segmenter:
         preds_amount=None,
         bad_preds_amount=None,
     ):
+        print("Saving examples")
         if not self.b_analysed:
             raise ValueError("Model not analysed")
 
         if preds_amount is None:
-            preds_amount = self.setup.preds_amount
+            preds_amount = self.setup.pipeline_config.preds_amount
 
         if bad_preds_amount is None:
-            bad_preds_amount = self.setup.bad_preds_amount
+            bad_preds_amount = self.setup.pipeline_config.bad_preds_amount
 
         print("\n\nRetrieving", preds_amount, "predictions:\n\n")
 
@@ -358,8 +358,8 @@ class Segmenter:
             data=self.dataf,
             save_folder=self.model_name,
             amount=preds_amount,
-            name_format=self.setup.name_format,
-            print_options=self.setup.print_options,
+            name_format=self.setup.pipeline_config.name_format,
+            print_options=self.setup.pipeline_config.print_options,
             verbose=1,
         )
 
@@ -369,9 +369,9 @@ class Segmenter:
             model=self.model,
             data_sorted=self.data_sorted,
             save_folder=self.model_name,
-            image_size=self.setup.image_size,
+            image_size=self.setup.net_config.image_size,
             amount=bad_preds_amount,
-            name_format=self.setup.name_format,
+            name_format=self.setup.pipeline_config.name_format,
             verbose=1,
         )
 
