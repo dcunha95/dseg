@@ -9,18 +9,6 @@ Created on Fri Jan  7 16:50:56 2022
 import os
 
 
-class Setup:
-    def __init__(
-        self,
-        pipeline_config,
-        net_config,
-        fit_config,
-    ):
-        self.pipeline_config = pipeline_config
-        self.net_config = net_config
-        self.fit_config = fit_config
-
-
 class PipelineConfig:
     def __init__(
         self,
@@ -97,3 +85,31 @@ class FitConfig:
         self.lr_decay_after_epoch = lr_decay_after_epoch
         self.lr_decay = lr_decay
         self.loss = loss
+
+
+class Setup:
+    def __init__(
+        self,
+        pipeline_config=PipelineConfig(),
+        net_config=NetConfig(),
+        fit_config=FitConfig(),
+        model_from_file=None,
+    ):
+        self.pipeline_config = pipeline_config
+        self.net_config = net_config
+        self.fit_config = fit_config
+        self.model_from_file = model_from_file
+
+    @property
+    def dict(self):
+        setup_dic = {}
+        for i in self.__dict__:
+            if i in ["pipeline_config", "net_config", "fit_config"]:
+                dic = {}
+                for j in self.__dict__[i].__dict__:
+                    dic[j] = self.__dict__[i].__dict__[j]
+                setup_dic[i] = dic
+            else:
+                setup_dic[i] = self.__dict__[i]
+
+        return setup_dic

@@ -72,33 +72,38 @@ class Segmenter:
 
         self.stats_list = None
 
-        if self.setup.net_config.model_type == "unet":
-            self.model = nets.unet_14(net_config=self.setup.net_config)
+        if self.setup.model_from_file is None:
 
-        if self.setup.net_config.model_type == "unet++":
-            self.model = nets.unet_pp_13(net_config=self.setup.net_config)
+            if self.setup.net_config.model_type == "unet":
+                self.model = nets.unet_14(net_config=self.setup.net_config)
 
-        if self.setup.net_config.model_type == "old_unet":
-            self.model = nets.unet_4(
-                input_shape=self.setup.net_config.input_shape,
-                base_filters=self.setup.net_config.base_filters,
-                kernel_size=self.setup.net_config.kernel_size,
-                dropout_amount=self.setup.net_config.dropout_amount,
-                label_amount=3,
-                node_type=4,
-                use_bn=self.setup.net_config.use_bn,
-            )
+            if self.setup.net_config.model_type == "unet++":
+                self.model = nets.unet_pp_13(net_config=self.setup.net_config)
 
-        if self.setup.net_config.model_type == "old_unet++":
-            self.model = nets.unet_pp_10(
-                input_shape=self.setup.net_config.input_shape,
-                base_filters=self.setup.net_config.base_filters,
-                kernel_size=self.setup.net_config.kernel_size,
-                dropout_amount=self.setup.net_config.dropout_amount,
-                label_amount=3,
-                node_type=4,
-                use_bn=self.setup.net_config.use_bn,
-            )
+            if self.setup.net_config.model_type == "old_unet":
+                self.model = nets.unet_4(
+                    input_shape=self.setup.net_config.input_shape,
+                    base_filters=self.setup.net_config.base_filters,
+                    kernel_size=self.setup.net_config.kernel_size,
+                    dropout_amount=self.setup.net_config.dropout_amount,
+                    label_amount=3,
+                    node_type=4,
+                    use_bn=self.setup.net_config.use_bn,
+                )
+
+            if self.setup.net_config.model_type == "old_unet++":
+                self.model = nets.unet_pp_10(
+                    input_shape=self.setup.net_config.input_shape,
+                    base_filters=self.setup.net_config.base_filters,
+                    kernel_size=self.setup.net_config.kernel_size,
+                    dropout_amount=self.setup.net_config.dropout_amount,
+                    label_amount=3,
+                    node_type=4,
+                    use_bn=self.setup.net_config.use_bn,
+                )
+
+        else:
+            self.model = tf.keras.models.load_model(self.setup.model_from_file)
 
         self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
 
@@ -230,7 +235,7 @@ class Segmenter:
         if state == "train_outer_net":
             for i in range(self.setup.net_config.depth):
                 name_left = "bm_" + str(i) + "_0"
-                name_right = "bm_" + str(i) + "_" + str(self.setup.net_config.depth-i-1)
+                name_right = "bm_" + str(i) + "_" + str(self.setup.net_config.depth - i - 1)
                 self.model.get_layer(name=name_left).trainable = True
                 self.model.get_layer(name=name_right).trainable = True
 
