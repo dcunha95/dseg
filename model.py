@@ -104,6 +104,7 @@ class Segmenter:
 
         else:
             self.model = tf.keras.models.load_model(self.setup.model_from_file)
+            self.b_fitted = True
 
         self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
 

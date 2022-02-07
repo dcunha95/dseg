@@ -1323,6 +1323,19 @@ def get_base(
         )(node)
         node = ly.Add()([node, x])
 
+        # conv, bn, prelu
+        if node_type == 7:
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+            )(inputs)
+            node = ly.BatchNormalization()(node)
+            node = ly.PReLU()(node)
+
     outputs = node
 
     model = tf.keras.Model(inputs, outputs, name=name)
