@@ -157,8 +157,8 @@ class Segmenter:
 
         self.b_ds_ready = True
 
-    def fit(self, fit_config=None):
-        """Compile and train the model with the train dataset partition"""
+    def compile(self, fit_config=None):
+        """Compile the model"""
 
         if fit_config is None:
             fit_config = self.setup.fit_config
@@ -182,9 +182,17 @@ class Segmenter:
             metrics=self.metrics,
         )
 
+        pass
+
+    def fit(self, fit_config=None):
+        """Compile and Train the model with the train dataset partition"""
+
+        if fit_config is None:
+            fit_config = self.setup.fit_config
+
         self.history = self.model.fit(
             self.trn_gen,
-            epochs=self.setup.fit_config.epochs,
+            epochs=fit_config.epochs,
             validation_data=self.val_gen,
             callbacks=self.callbacks,
         )
