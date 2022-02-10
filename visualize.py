@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 
 sns.set_theme(style="whitegrid")
 
-
 class QualityAssurance:
     @staticmethod
     def get_iou(y_pred, y_true):
