@@ -1268,6 +1268,7 @@ def get_base(
             dilation_rate=dilation_rate,
             kernel_initializer=kernel_initializer,
             bias_initializer=bias_initializer,
+	    use_bias=False,
         )(inputs)
         node = ly.BatchNormalization()(node)
         node = ly.Activation("relu")(node)
