@@ -18,17 +18,18 @@ import matplotlib.pyplot as plt
 
 sns.set_theme(style="whitegrid")
 
+
 class QualityAssurance:
     @staticmethod
     def get_iou(y_pred, y_true):
-        "Returns IoU (Jaccard Index)"
+        """Returns IoU (Jaccard Index)"""
         inter = np.count_nonzero(np.logical_and(y_pred, y_true).astype("uint8"))
         union = np.count_nonzero(np.logical_or(y_pred, y_true).astype("uint8"))
         return inter / union
 
     @staticmethod
     def get_dice(y_pred, y_true):
-        "Returns DICE (Sørensen–Dice Index)"
+        """Returns DICE (Sørensen–Dice Index)"""
         inter = np.count_nonzero(np.logical_and(y_pred, y_true).astype("uint8"))
         x = np.count_nonzero(y_pred.astype("uint8"))
         y = np.count_nonzero(y_true.astype("uint8"))

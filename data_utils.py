@@ -21,6 +21,7 @@ class DataUtils:
         for i in enumerate(model.model.layers):
             print(i[0], i[1].trainable, i[1].name)
 
+
     @staticmethod
     def save_model(
             model
