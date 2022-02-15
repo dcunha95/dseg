@@ -36,6 +36,14 @@ class QualityAssurance:
         return inter / (x + y)
 
     @staticmethod
+    def get_iou_loss(y_true, y_pred):
+        inter = tf.math.reduce_sum(tf.math.multiply(y_pred, y_true), axis=[1, 2])
+        union = tf.math.reduce_sum(y_true + y_pred, axis=[1, 2]) - inter
+        iou_loss = 1 - tf.math.reduce_mean(tf.math.divide_no_nan(inter, union), axis=1)
+
+        return iou_loss
+
+    @staticmethod
     def prediction_metrics(prediction, target_img_path, use_original=False):
         """Take quality metrics from a prediction"""
 

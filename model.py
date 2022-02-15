@@ -176,9 +176,14 @@ class Segmenter:
                 print("Using tf.keras.mixed_precision.LossScaleOptimizer")
                 opt = tf.keras.mixed_precision.LossScaleOptimizer(opt)
 
+        if fit_config.loss == "iou":
+            loss = QualityAssurance.get_iou_loss
+        else:
+            loss = fit_config.loss
+
         self.model.compile(
             optimizer=opt,
-            loss=fit_config.loss,
+            loss=loss,
             metrics=self.metrics,
         )
 
