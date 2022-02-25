@@ -1061,6 +1061,7 @@ def plot_training(history, save_folder):
     graph = sns.lineplot(data=training, palette="bright", markers=True, dashes=False)
     graph.set(
         xlim=(1, len(training)),
+        ylim=(0, 1),
         ylabel="Metric",
         xticks=np.arange(1, len(training) + 1),
     )

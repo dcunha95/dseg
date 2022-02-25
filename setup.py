@@ -75,6 +75,7 @@ class FitConfig:
         lr_decay_after_epoch=None,
         lr_decay=0.05,
         loss="categorical_crossentropy",
+        monitor="val_loss",  # "val_loss" or "val_mean_io_u"
     ):
         # fit related:
         self.sample_weight = sample_weight
@@ -85,6 +86,7 @@ class FitConfig:
         self.lr_decay_after_epoch = lr_decay_after_epoch
         self.lr_decay = lr_decay
         self.loss = loss
+        self.monitor = monitor
 
 
 class Setup:

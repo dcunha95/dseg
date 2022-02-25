@@ -106,7 +106,9 @@ class Segmenter:
             self.model = tf.keras.models.load_model(self.setup.model_from_file)
             self.b_fitted = True
 
-        self.callbacks = [tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor="val_mean_io_u")]
+        self.callbacks = [
+            tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor)
+        ]
 
         # tidy_this_mess
         if self.setup.fit_config.lr_decay_after_epoch is not None:
