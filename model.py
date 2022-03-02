@@ -103,7 +103,10 @@ class Segmenter:
                 )
 
         else:
-            self.model = tf.keras.models.load_model(self.setup.model_from_file)
+            self.model = tf.keras.models.load_model(
+                self.setup.model_from_file,
+                custom_objects={"get_iou_loss": QualityAssurance.get_iou_loss},
+            )
             self.b_fitted = True
 
         self.callbacks = [
