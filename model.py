@@ -192,8 +192,6 @@ class Segmenter:
             metrics=self.metrics,
         )
 
-        pass
-
     def fit(self, fit_config=None):
         """Compile and Train the model with the train dataset partition"""
 
