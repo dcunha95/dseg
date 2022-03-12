@@ -152,13 +152,14 @@ class Segmenter:
                     # num_parallel_calls=tf.data.AUTOTUNE,
                 )
                 data = data.batch(self.setup.fit_config.batch_size, drop_remainder=True)
-                # data = data.prefetch(tf.data.AUTOTUNE)
+                data = data.prefetch(tf.data.AUTOTUNE)
                 tf_ds.append(data)
 
             self.trn_gen = tf_ds[0]
-            self.val_gen = tf_ds[1]
+            # self.val_gen = tf_ds[1]
+            self.val_gen = tf_ds[3]
             self.tst_gen = tf_ds[2]
-            self.stt_gen = tf_ds[3]
+            # self.stt_gen = tf_ds[3]
 
         else:
             self.trn_gen = man.KerasManager(
@@ -176,14 +177,14 @@ class Segmenter:
             self.tst_gen = man.KerasManager(
                 self.setup.fit_config.batch_size,
                 self.setup.net_config.image_size,
-                self.val_dataset,
+                self.tst_dataset,
             )
 
-            self.stt_gen = man.KerasManager(
-                10,
-                self.setup.net_config.image_size,
-                self.stt_dataset,
-            )
+        self.stt_gen = man.KerasManager(
+            10,
+            self.setup.net_config.image_size,
+            self.stt_dataset,
+        )
 
         self.b_ds_ready = True
 
