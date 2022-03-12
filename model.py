@@ -15,6 +15,7 @@ import dseg.manager as man
 import dseg.visualize as vis
 from dseg.visualize import QualityAssurance
 import dseg.nets as nets
+import dseg.preprocessing as prep
 
 
 # from IPython.display import Image
@@ -124,7 +125,7 @@ class Segmenter:
 
             self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
 
-    def get_ds(self, ds):
+    def get_ds(self, ds, use_tf_data=False):
         self.trn_dataset = ds[0]
         self.val_dataset = ds[1]
         self.tst_dataset = ds[2]
@@ -136,29 +137,53 @@ class Segmenter:
             self.setup.fit_config.batch_size = min_bs
             print("batch_size too big, changing to ", min_bs, sep="")
 
-        self.trn_gen = man.KerasManager(
-            self.setup.fit_config.batch_size,
-            self.setup.net_config.image_size,
-            self.trn_dataset,
-        )
+        if use_tf_data:
 
-        self.val_gen = man.KerasManager(
-            self.setup.fit_config.batch_size,
-            self.setup.net_config.image_size,
-            self.val_dataset,
-        )
+            def prep_ds(x, y):
+                px = prep.Prep.prep_x(x, image_size=self.setup.net_config.image_size)
+                py = prep.Prep.prep_y(y, image_size=self.setup.net_config.image_size)
+                return px, py
 
-        self.tst_gen = man.KerasManager(
-            self.setup.fit_config.batch_size,
-            self.setup.net_config.image_size,
-            self.val_dataset,
-        )
+            tf_ds = []
+            for partition in ds:
+                data = tf.data.Dataset.from_tensor_slices((partition.raw_path, partition.mask_path))
+                data = data.map(
+                    prep_ds,
+                    # num_parallel_calls=tf.data.AUTOTUNE,
+                )
+                data = data.batch(self.setup.fit_config.batch_size, drop_remainder=True)
+                # data = data.prefetch(tf.data.AUTOTUNE)
+                tf_ds.append(data)
 
-        self.stt_gen = man.KerasManager(
-            10,
-            self.setup.net_config.image_size,
-            self.stt_dataset,
-        )
+            self.trn_gen = tf_ds[0]
+            self.val_gen = tf_ds[1]
+            self.tst_gen = tf_ds[2]
+            self.stt_gen = tf_ds[3]
+
+        else:
+            self.trn_gen = man.KerasManager(
+                self.setup.fit_config.batch_size,
+                self.setup.net_config.image_size,
+                self.trn_dataset,
+            )
+
+            self.val_gen = man.KerasManager(
+                self.setup.fit_config.batch_size,
+                self.setup.net_config.image_size,
+                self.val_dataset,
+            )
+
+            self.tst_gen = man.KerasManager(
+                self.setup.fit_config.batch_size,
+                self.setup.net_config.image_size,
+                self.val_dataset,
+            )
+
+            self.stt_gen = man.KerasManager(
+                10,
+                self.setup.net_config.image_size,
+                self.stt_dataset,
+            )
 
         self.b_ds_ready = True
 

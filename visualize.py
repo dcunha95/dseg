@@ -36,6 +36,7 @@ class QualityAssurance:
         return inter / (x + y)
 
     @staticmethod
+    @tf.function
     def get_iou_loss(y_true, y_pred):
         inter = tf.math.reduce_sum(tf.math.multiply(y_pred, y_true), axis=[1, 2])
         union = tf.math.reduce_sum(y_true + y_pred, axis=[1, 2]) - inter
