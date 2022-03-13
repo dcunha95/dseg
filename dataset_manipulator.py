@@ -14,6 +14,16 @@ class DataManipulator:
     def __init__(self, setup):
         self.setup = setup
 
+    @staticmethod
+    def df_div(
+        df,
+        factor,
+    ):
+        frac = df.iloc[::factor, :]
+        frac.index = [i for i in range(len(frac))]
+
+        return frac 
+
     def load_dataset(
         self,
         randomize=True,
