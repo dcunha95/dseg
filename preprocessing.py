@@ -21,3 +21,10 @@ class Prep:
         img = tf.reshape(img, shape=(image_size[0], image_size[1], 3))
         img = tf.cast(img, dtype=tf.float32)
         return img
+
+    @staticmethod
+    @tf.function
+    def smooth_labels(y, factor=0.1):
+        ys = y*(1 - factor)
+        ys += (factor / y.shape[-1])
+        return ys
