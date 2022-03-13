@@ -147,6 +147,11 @@ class Segmenter:
             tf_ds = []
             for partition in ds:
                 data = tf.data.Dataset.from_tensor_slices((partition.raw_path, partition.mask_path))
+
+                options = tf.data.Options()
+                options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+                data = data.with_options(options)
+
                 data = data.map(
                     prep_ds,
                     # num_parallel_calls=tf.data.AUTOTUNE,
