@@ -324,18 +324,18 @@ class QualityAssurance:
                     if verbose == 1:
                         print(str(i + 1) + " / " + str(amount))
 
-                    pred = model.predict(x.numpy()[0])
+                    pred = model.predict(x)
 
-
-                name = pred_name(data, i, 0, name_format=name_format)
-                save_output(
-                    name,
-                    pred,
-                    data.iloc[i]["Input Image"],
-                    data.iloc[i]["Ground Truth"],
-                    save_folder,
-                    print_options=print_options,
-                )
+                for (j, w) in enumerate(pred):
+                    name = pred_name(data, i, 0, name_format=name_format)
+                    save_output(
+                        name,
+                        w,
+                        data.iloc[i+j]["Input Image"],
+                        data.iloc[i+j]["Ground Truth"],
+                        save_folder,
+                        print_options=print_options,
+                    )
 
         return
     
