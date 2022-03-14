@@ -224,7 +224,7 @@ class QualityAssurance:
         ds_size = len(stat_gen)
         stats_list = [None for k in range(ds_size)]
 
-        gen = stat_gen.batch_size(1)
+        gen = stat_gen.batch(1)
 
         for (i, (x, y)) in enumerate(gen):
 
