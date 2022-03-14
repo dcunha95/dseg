@@ -15,6 +15,7 @@ import seaborn as sns
 import matplotlib
 import dseg.manager as man
 import matplotlib.pyplot as plt
+from dseg.preprocessing import Prep as prep
 
 sns.set_theme(style="whitegrid")
 
@@ -224,14 +225,14 @@ class QualityAssurance:
         ds_size = len(stat_gen)
         stats_list = [None for k in range(ds_size)]
 
-        gen = stat_gen.batch(1)
+        gen = stat_gen.batch(1, drop_remainder=True)
 
         for (i, (x, y)) in enumerate(gen):
 
             if verbose == 1:
                 print(str(i + 1) + " / " + str(ds_size))
 
-            pred = model.predict_on_batch(x)
+            pred = model.predict(x.numpy()[0])
 
             stats_list[i] = QualityAssurance.prediction_metrics(pred, dataset.mask_path.iloc[i])
 
@@ -273,6 +274,106 @@ class QualityAssurance:
         # data_info.to_csv(save_folder + "/metrics_summary.csv")
 
         return data, data_info
+
+    @staticmethod
+    def save_preds(
+        model,
+        stat_gen,
+        data,
+        save_folder,
+        amount=10,
+        name_format=["Average", "Name"],
+        print_options=[True, True, True, True, True, True],
+        verbose=1,
+    ):
+        """Save example predictions."""
+
+        if amount > 0:
+
+            if not os.path.exists(save_folder):
+                os.makedirs(save_folder)
+
+            if not os.path.exists(save_folder + "/predictions"):
+                os.makedirs(save_folder + "/predictions")
+            
+            gen = stat_gen.batch(1)
+
+            for (i, (x, y)) in enumerate(gen):
+                if i < amount:
+                    if verbose == 1:
+                        print(str(i + 1) + " / " + str(amount))
+
+                    pred = model.predict(x.numpy()[0])
+
+                name = pred_name(data, i, 0, name_format=name_format)
+                save_output(
+                    name,
+                    pred,
+                    data.iloc[i]["Input Image"],
+                    data.iloc[i]["Ground Truth"],
+                    save_folder,
+                    print_options=print_options,
+                )
+
+        return
+    
+    @staticmethod
+    def get_bad_preds(
+        model,
+        data_sorted,
+        save_folder,
+        image_size,
+        amount=10,
+        name_format=["Average", "Name"],
+        verbose=1,
+    ):
+        if amount > 0:
+
+            if not os.path.exists(save_folder + "/bad_preds"):
+                os.makedirs(save_folder + "/bad_preds")
+            bad_preds = data_sorted.iloc[:amount]
+
+            idx = pd.IndexSlice
+
+            bad_dataset = bad_preds.loc[:, idx["Input Image", "Ground Truth"]]
+
+            bad_dataset.columns = pd.Index(data=["raw_path", "mask_path"])
+
+            def prep_ds(x, y):
+                px = prep.Prep.prep_x(x, image_size=image_size)
+                py = prep.Prep.prep_y(y, image_size=image_size)
+                return px, py
+
+            bad_gen = tf.data.Dataset.from_tensor_slices((bad_dataset.raw_path, bad_dataset.mask_path))
+
+            options = tf.data.Options()
+            options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+            bad_gen = bad_gen.with_options(options)
+
+            bad_gen = bad_gen.map(
+                prep_ds,
+                # num_parallel_calls=tf.data.AUTOTUNE,
+            )
+
+            bad_gen = bad_gen.batch(1, drop_remainder=True)
+            bad_gen = bad_gen.prefetch(tf.data.AUTOTUNE)
+
+
+            save_preds(
+                model=model,
+                stat_gen=bad_gen,
+                data=bad_preds,
+                save_folder=save_folder + "/bad_preds",
+                amount=amount,
+                name_format=name_format,
+                verbose=verbose,
+            )
+
+        return
+
+    
+
+
 
     @staticmethod
     def format_table(

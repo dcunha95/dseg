@@ -164,7 +164,7 @@ class Segmenter:
             # self.val_gen = tf_ds[1]
             self.val_gen = tf_ds[3]
             self.tst_gen = tf_ds[2]
-            # self.stt_gen = tf_ds[3]
+            self.stt_gen = tf_ds[3]
 
         else:
             self.trn_gen = man.KerasManager(
@@ -185,11 +185,11 @@ class Segmenter:
                 self.tst_dataset,
             )
 
-        self.stt_gen = man.KerasManager(
-            10,
-            self.setup.net_config.image_size,
-            self.stt_dataset,
-        )
+            self.stt_gen = man.KerasManager(
+                10,
+                self.setup.net_config.image_size,
+                self.stt_dataset,
+            )
 
         self.b_ds_ready = True
 
@@ -293,9 +293,9 @@ class Segmenter:
         if not self.b_fitted:
             raise ValueError("Model not fitted")
 
-        print("\n\nEvaluating model " + self.model_name + ":\n\n")
-        results = self.model.evaluate(self.tst_gen)
-        print("\nEvaluation results:", results)
+        # print("\n\nEvaluating model " + self.model_name + ":\n\n")
+        # results = self.model.evaluate(self.tst_gen)
+        # print("\nEvaluation results:", results)
 
         self.epoch_results = vis.plot_training(self.history, self.model_name)
 
@@ -405,7 +405,7 @@ class Segmenter:
 
         print("\n\nRetrieving", preds_amount, "predictions:\n\n")
 
-        vis.save_preds(
+        QualityAssurance.save_preds(
             model=self.model,
             stat_gen=self.stt_gen,
             data=self.dataf,
@@ -418,7 +418,7 @@ class Segmenter:
 
         print("\n\nRetrieving", bad_preds_amount, "worst predictions:\n\n")
 
-        vis.get_bad_preds(
+        QualityAssurance.get_bad_preds(
             model=self.model,
             data_sorted=self.data_sorted,
             save_folder=self.model_name,
