@@ -212,6 +212,69 @@ class QualityAssurance:
         return data, data_info
 
     @staticmethod
+    def retrieve_stats2(
+        model,
+        stat_gen,
+        dataset,
+        verbose=1,
+    ):
+        """Retrieve quality statistics based on stat dataset (tf.Dataset)"""
+
+        # initialize the array that will hold metrics information
+        ds_size = len(stat_gen)
+        stats_list = [None for k in range(ds_size)]
+
+        gen = stat_gen.batch_size(1)
+
+        for (i, (x, y)) in enumerate(gen):
+
+            if verbose == 1:
+                print(str(i + 1) + " / " + str(ds_size))
+
+            pred = model.predict_on_batch(x)
+
+            stats_list[i] = QualityAssurance.prediction_metrics(pred, dataset.mask_path.iloc[i])
+
+        data = pd.DataFrame(
+            np.array(stats_list, dtype="float32"),
+            columns=[
+                "Average",
+                "Outer",
+                "Lumen",
+                "Plaque",
+                "Vessel",
+                "Lumen Area [mm²]",
+                "Lumen Area GT [mm²]",
+                "Plaque Area [mm²]",
+                "Plaque Area GT [mm²]",
+                "Vessel Area [mm²]",
+                "Vessel Area GT [mm²]",
+            ],
+        )
+
+        # More metrics
+        data["Lumen Area Ratio"] = data["Lumen Area [mm²]"] / data["Lumen Area GT [mm²]"]
+        data["Plaque Area Ratio"] = data["Plaque Area [mm²]"] / data["Plaque Area GT [mm²]"]
+        data["Vessel Area Ratio"] = data["Vessel Area [mm²]"] / data["Vessel Area GT [mm²]"]
+
+        # A single image has 100mm2
+        data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"] = 100 * data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"]
+
+        # Even more
+        data["Plaque Burden"] = data["Plaque Area [mm²]"] / data["Vessel Area [mm²]"]
+        data["Plaque Burden GT"] = data["Plaque Area GT [mm²]"] / data["Vessel Area GT [mm²]"]
+
+        # MOOOAAAAAR
+        data["Plaque Burden Model/GT Ratio"] = data["Plaque Burden"] / data["Plaque Burden GT"]
+
+        data_info = data.describe()
+
+        # data.to_csv(save_folder + "/metrics.csv")
+        # data_info.to_csv(save_folder + "/metrics_summary.csv")
+
+        return data, data_info
+
+    @staticmethod
     def format_table(
         data,
         data_info,

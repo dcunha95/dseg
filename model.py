@@ -301,7 +301,7 @@ class Segmenter:
 
         print("\n\nRetrieving model statistics:\n\n")
 
-        self.data, self.data_info = QualityAssurance.retrieve_stats(model=self.model, stat_gen=self.stt_gen, dataset=self.stt_dataset)
+        self.data, self.data_info = QualityAssurance.retrieve_stats2(model=self.model, stat_gen=self.stt_gen, dataset=self.stt_dataset)
 
         (self.dataf, self.data_infof, self.data_sorted,) = QualityAssurance.format_table(
             data=self.data,
