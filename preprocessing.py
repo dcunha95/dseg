@@ -28,3 +28,25 @@ class Prep:
         ys = y*(1 - factor)
         ys += (factor / y.shape[-1])
         return ys
+
+    @staticmethod
+    def get_tf_dataset(ds, image_size, batch_size):
+        def prep_ds(x, y):
+                px = Prep.prep_x(x, image_size=image_size)
+                py = Prep.prep_y(y, image_size=image_size)
+                return px, py
+
+        tf_ds = tf.data.Dataset.from_tensor_slices((ds.raw_path, ds.mask_path))
+
+        options = tf.data.Options()
+        options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+        tf_ds = tf_ds.with_options(options)
+
+        tf_ds = tf_ds.map(
+            prep_ds,
+            # num_parallel_calls=tf.data.AUTOTUNE,
+        )
+        tf_ds = tf_ds.batch(batch_size, drop_remainder=True)
+        tf_ds = tf_ds.prefetch(tf.data.AUTOTUNE)
+
+        return tf_ds

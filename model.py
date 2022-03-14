@@ -224,7 +224,7 @@ class Segmenter:
         )
 
     def fit(self, fit_config=None):
-        """Compile and Train the model with the train dataset partition"""
+        """Train the model with the train dataset partition"""
 
         if fit_config is None:
             fit_config = self.setup.fit_config
@@ -301,7 +301,13 @@ class Segmenter:
 
         print("\n\nRetrieving model statistics:\n\n")
 
-        self.data, self.data_info = QualityAssurance.retrieve_stats2(model=self.model, stat_gen=self.stt_gen, dataset=self.stt_dataset)
+        # self.data, self.data_info = QualityAssurance.retrieve_stats2(model=self.model, stat_gen=self.stt_gen, dataset=self.stt_dataset)
+        self.data, self.data_info = QualityAssurance.retrieve_stats2(
+            model=self.model, 
+            dataset=self.stt_dataset,
+            image_size=self.setup.net_config.image_size,
+        )
+
 
         (self.dataf, self.data_infof, self.data_sorted,) = QualityAssurance.format_table(
             data=self.data,
@@ -407,9 +413,9 @@ class Segmenter:
 
         QualityAssurance.save_preds(
             model=self.model,
-            stat_gen=self.stt_gen,
             data=self.dataf,
             save_folder=self.model_name,
+            image_size=self.setup.net_config.image_size,
             amount=preds_amount,
             name_format=self.setup.pipeline_config.name_format,
             print_options=self.setup.pipeline_config.print_options,
@@ -418,13 +424,14 @@ class Segmenter:
 
         print("\n\nRetrieving", bad_preds_amount, "worst predictions:\n\n")
 
-        QualityAssurance.get_bad_preds(
+        QualityAssurance.save_preds(
             model=self.model,
-            data_sorted=self.data_sorted,
+            data=self.data_sorted,
             save_folder=self.model_name,
             image_size=self.setup.net_config.image_size,
             amount=bad_preds_amount,
             name_format=self.setup.pipeline_config.name_format,
+            print_options=self.setup.pipeline_config.print_options,
             verbose=1,
         )
 

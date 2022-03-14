@@ -215,24 +215,30 @@ class QualityAssurance:
     @staticmethod
     def retrieve_stats2(
         model,
-        stat_gen,
+        # stat_gen,
         dataset,
+        image_size=(512,512),
         verbose=1,
     ):
         """Retrieve quality statistics based on stat dataset (tf.Dataset)"""
 
-        # initialize the array that will hold metrics information
-        ds_size = len(stat_gen)
-        stats_list = [None for k in range(ds_size)]
 
-        gen = stat_gen.batch(1, drop_remainder=True)
+        gen = prep.get_tf_dataset(
+            ds=dataset,
+            image_size=image_size,
+            batch_size=1,
+        )
+
+        # initialize the array that will hold metrics information
+        ds_size = len(gen)
+        stats_list = [None for k in range(ds_size)]
 
         for (i, (x, y)) in enumerate(gen):
 
             if verbose == 1:
                 print(str(i + 1) + " / " + str(ds_size))
 
-            pred = model.predict(x.numpy()[0])
+            pred = model.predict_on_batch(x)
 
             stats_list[i] = QualityAssurance.prediction_metrics(pred, dataset.mask_path.iloc[i])
 
@@ -278,9 +284,9 @@ class QualityAssurance:
     @staticmethod
     def save_preds(
         model,
-        stat_gen,
         data,
         save_folder,
+        image_size=(512, 512),
         amount=10,
         name_format=["Average", "Name"],
         print_options=[True, True, True, True, True, True],
@@ -296,7 +302,22 @@ class QualityAssurance:
             if not os.path.exists(save_folder + "/predictions"):
                 os.makedirs(save_folder + "/predictions")
             
-            gen = stat_gen.batch(1)
+            # generate ds from data
+            idx = pd.IndexSlice
+            dataset = data.loc[:, idx["Input Image", "Ground Truth"]]
+            dataset.columns = pd.Index(data=["raw_path", "mask_path"])
+
+            # get tf_ds
+            gen = prep.get_tf_dataset(
+                ds=dataset,
+                image_size=image_size,
+                batch_size=1,
+            )
+
+            options = tf.data.Options()
+            options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+            
+            gen = gen.with_options(options)
 
             for (i, (x, y)) in enumerate(gen):
                 if i < amount:
@@ -304,6 +325,7 @@ class QualityAssurance:
                         print(str(i + 1) + " / " + str(amount))
 
                     pred = model.predict(x.numpy()[0])
+
 
                 name = pred_name(data, i, 0, name_format=name_format)
                 save_output(
