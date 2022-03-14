@@ -227,6 +227,7 @@ class QualityAssurance:
             ds=dataset,
             image_size=image_size,
             batch_size=1,
+            shard=False,
         )
 
         # initialize the array that will hold metrics information
