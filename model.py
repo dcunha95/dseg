@@ -111,7 +111,7 @@ class Segmenter:
             self.b_fitted = True
 
         self.callbacks = [
-            tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor)
+            tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor, verbose=1)
         ]
 
         # tidy_this_mess
