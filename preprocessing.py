@@ -75,10 +75,14 @@ class Prep:
 
         tf_ds = tf.data.Dataset.from_tensor_slices((ds.raw_path, ds.mask_path))
 
+        options = tf.data.Options()
+        
         if shard:
-            options = tf.data.Options()
             options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-            tf_ds = tf_ds.with_options(options)
+        else:
+            options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
+
+        tf_ds = tf_ds.with_options(options)
 
         tf_ds = tf_ds.map(
             prep_ds,
