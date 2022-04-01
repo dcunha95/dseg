@@ -292,6 +292,7 @@ class QualityAssurance:
         name_format=["Average", "Name"],
         print_options=[True, True, True, True, True, True],
         verbose=1,
+        
     ):
         """Save example predictions."""
 
@@ -526,6 +527,7 @@ class VisualizerAssist:
 
         # [min x, max x, min y, max y]
         data_max = max(data_info.loc["max", [name, gt_name]])
+        data_max += 0.0001
 
         graph = sns.scatterplot(x=data[gt_name], y=data[name], marker="o", color="red", s=3)
         graph = sns.lineplot(x=[0, 1.2 * data_max], y=[0, 1.2 * data_max])

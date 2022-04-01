@@ -125,7 +125,7 @@ class Segmenter:
 
             self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
 
-    def get_ds(self, ds, use_tf_data=False):
+    def get_ds(self, ds, use_tf_data=True):
         self.trn_dataset = ds[0]
         self.val_dataset = ds[1]
         self.tst_dataset = ds[2]
@@ -239,6 +239,59 @@ class Segmenter:
         self.model.save(self.model_name + "/model.h5")
 
         self.b_fitted = True
+        
+    def predict(
+            self, 
+            data: pd.DataFrame = None,
+            save_folder: str = "", 
+            verbose: int = 1,
+        ):
+        
+        if data is None:
+            return None
+        
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
+
+        if not os.path.exists(save_folder + "/predictions"):
+            os.makedirs(save_folder + "/predictions")
+        
+        # generate ds from data
+        idx = pd.IndexSlice
+        dataset = data.loc[:, idx["Input Image", "Ground Truth"]]
+        dataset.columns = pd.Index(data=["raw_path", "mask_path"])
+        
+        # get tf_ds
+        gen = prep.Prep.get_tf_dataset(
+            ds=dataset,
+            image_size=self.setup.net_config.image_size,
+            batch_size=1,
+        )
+
+        options = tf.data.Options()
+        options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+        
+        gen = gen.with_options(options)
+        
+        amount = len(gen)
+        
+        for (i, (x, y)) in enumerate(gen):
+            if verbose == 1:
+                print(str(i + 1) + " / " + str(amount))
+
+            pred = self.model.predict(x)
+
+            for (j, w) in enumerate(pred):
+                name = vis.VisualizerAssist.pred_name(data, i, 0, name_format=self.setup.pipeline_config.name_format)
+                vis.VisualizerAssist.save_output(
+                    name,
+                    w,
+                    data.iloc[i+j]["Input Image"],
+                    data.iloc[i+j]["Ground Truth"],
+                    save_folder,
+                    print_options=self.setup.pipeline_config.print_options,
+                )
+        
 
     def update_trainable_params(self, state):
 
@@ -287,8 +340,8 @@ class Segmenter:
                 self.model.get_layer(name=name_left).trainable = True
                 self.model.get_layer(name=name_right).trainable = True
 
-    def run_analysis(self):
-        """Run analysis on model quality"""
+    def run_analysis(self, plot_training=True):
+        """Run analysis on model quality."""
 
         if not self.b_fitted:
             raise ValueError("Model not fitted")
@@ -296,8 +349,9 @@ class Segmenter:
         # print("\n\nEvaluating model " + self.model_name + ":\n\n")
         # results = self.model.evaluate(self.tst_gen)
         # print("\nEvaluation results:", results)
-
-        self.epoch_results = vis.plot_training(self.history, self.model_name)
+        
+        if plot_training:    
+            self.epoch_results = vis.plot_training(self.history, self.model_name)
 
         print("\n\nRetrieving model statistics:\n\n")
 
@@ -333,7 +387,6 @@ class Segmenter:
         :param rankdir:
         :return:
         """
-
         tf.keras.utils.plot_model(
             model=self.model,
             to_file=self.model_name + "/model_expanded.png",
@@ -396,18 +449,12 @@ class Segmenter:
 
     def save_examples(
         self,
-        preds_amount=None,
-        bad_preds_amount=None,
+        preds_amount=20,
+        bad_preds_amount=20,
     ):
         print("Saving examples")
         if not self.b_analysed:
             raise ValueError("Model not analysed")
-
-        if preds_amount is None:
-            preds_amount = self.setup.pipeline_config.preds_amount
-
-        if bad_preds_amount is None:
-            bad_preds_amount = self.setup.pipeline_config.bad_preds_amount
 
         print("\n\nRetrieving", preds_amount, "predictions:\n\n")
 

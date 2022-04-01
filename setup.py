@@ -14,16 +14,12 @@ class PipelineConfig:
         self,
         split=[0.6, 0.2, 0.2],
         dataset_percent=0.1,
-        preds_amount=50,
-        bad_preds_amount=50,
         print_options=[True, True, True, True, True, True],
         name_format=["Average", "Name"],
     ):
         # pipeline related:
         self.split = split
         self.dataset_percent = dataset_percent
-        self.preds_amount = preds_amount
-        self.bad_preds_amount = bad_preds_amount
         self.print_options = print_options  # print options: [raw, output, input, input_original, gt, gt_original]
         self.name_format = name_format
 
