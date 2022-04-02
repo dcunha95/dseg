@@ -27,6 +27,7 @@ class Segmenter:
         setup,
         model_name="ivus_seg",
     ):
+
         self.model_name = model_name
         self.setup = setup
         self.trn_dataset = None
@@ -57,7 +58,7 @@ class Segmenter:
         self.b_fitted = False
         self.b_analysed = False
 
-        #### create folder and update model name
+        # create folder and update model name
         k = 0
         self.model_name = self.model_name + "_" + str(k)
         while os.path.exists(self.model_name):
@@ -69,10 +70,8 @@ class Segmenter:
             self.model_name = name + str(k)
 
         os.makedirs(self.model_name)
-        ####
 
-        self.stats_list = None
-
+        # build model (net)
         if self.setup.model_from_file is None:
 
             if self.setup.net_config.model_type == "unet":
@@ -102,7 +101,7 @@ class Segmenter:
                     node_type=4,
                     use_bn=self.setup.net_config.use_bn,
                 )
-
+        # load existing model (net)
         else:
             self.model = tf.keras.models.load_model(
                 self.setup.model_from_file,
@@ -110,14 +109,20 @@ class Segmenter:
             )
             self.b_fitted = True
 
+        # setup callbacks
         self.callbacks = [
-            tf.keras.callbacks.ModelCheckpoint(self.model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor, verbose=1)
+            tf.keras.callbacks.ModelCheckpoint(
+                self.model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor, verbose=1
+            )
         ]
 
-        # tidy_this_mess
+        # setup learning rate scheduler
         if self.setup.fit_config.lr_decay_after_epoch is not None:
 
-            def scheduler(epoch, lr):
+            def scheduler(
+                epoch,
+                lr,
+            ):
                 if epoch < self.setup.fit_config.lr_decay_after_epoch:
                     return lr
                 else:
@@ -125,7 +130,19 @@ class Segmenter:
 
             self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
 
-    def get_ds(self, ds, use_tf_data=True):
+        # x and y preprocessing
+        self.prep_x = prep.Prep.prep_x
+        self.prep_y = prep.Prep.prep_y
+
+    def get_ds(self, ds, use_tf_data: bool = True):
+        """
+        Builds the dataset objects.
+
+        :param ds:
+        :param use_tf_data:
+        :return:
+        """
+
         self.trn_dataset = ds[0]
         self.val_dataset = ds[1]
         self.tst_dataset = ds[2]
@@ -139,32 +156,45 @@ class Segmenter:
 
         if use_tf_data:
 
-            def prep_ds(x, y):
-                px = prep.Prep.prep_x(x, image_size=self.setup.net_config.image_size)
-                py = prep.Prep.prep_y(y, image_size=self.setup.net_config.image_size)
-                return px, py
+            image_size = self.setup.net_config.image_size
+            batch_size = self.setup.fit_config.batch_size
 
-            tf_ds = []
-            for partition in ds:
-                data = tf.data.Dataset.from_tensor_slices((partition.raw_path, partition.mask_path))
+            self.trn_gen = prep.Prep.get_tf_dataset(
+                ds=self.trn_dataset,
+                image_size=image_size,
+                batch_size=batch_size,
+                prep_x=self.prep_x,
+                prep_y=self.prep_y,
+                return_y=True,
+            )
 
-                options = tf.data.Options()
-                options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-                data = data.with_options(options)
+            self.val_gen = prep.Prep.get_tf_dataset(
+                # ds=self.val_dataset,
+                ds=self.stt_dataset,
+                image_size=image_size,
+                batch_size=batch_size,
+                prep_x=self.prep_x,
+                prep_y=self.prep_y,
+                return_y=True,
+            )
 
-                data = data.map(
-                    prep_ds,
-                    # num_parallel_calls=tf.data.AUTOTUNE,
-                )
-                data = data.batch(self.setup.fit_config.batch_size, drop_remainder=True)
-                data = data.prefetch(tf.data.AUTOTUNE)
-                tf_ds.append(data)
+            self.tst_gen = prep.Prep.get_tf_dataset(
+                ds=self.tst_dataset,
+                image_size=image_size,
+                batch_size=batch_size,
+                prep_x=self.prep_x,
+                prep_y=self.prep_y,
+                return_y=True,
+            )
 
-            self.trn_gen = tf_ds[0]
-            # self.val_gen = tf_ds[1]
-            self.val_gen = tf_ds[3]
-            self.tst_gen = tf_ds[2]
-            self.stt_gen = tf_ds[3]
+            self.stt_gen = prep.Prep.get_tf_dataset(
+                ds=self.stt_dataset,
+                image_size=image_size,
+                batch_size=batch_size,
+                prep_x=self.prep_x,
+                prep_y=self.prep_y,
+                return_y=True,
+            )
 
         else:
             self.trn_gen = man.KerasManager(
@@ -194,7 +224,11 @@ class Segmenter:
         self.b_ds_ready = True
 
     def compile(self, fit_config=None):
-        """Compile the model"""
+        """
+        Compiles the model.
+        
+        :param fit_config: 
+        """ ""
 
         if fit_config is None:
             fit_config = self.setup.fit_config
@@ -239,42 +273,56 @@ class Segmenter:
         self.model.save(self.model_name + "/model.h5")
 
         self.b_fitted = True
-        
+
     def predict(
-            self, 
-            data: pd.DataFrame = None,
-            save_folder: str = "", 
-            verbose: int = 1,
-        ):
-        
+        self,
+        data: pd.DataFrame = None,
+        save_folder: str = "",
+        verbose: int = 1,
+        run_analysis: bool = True,
+    ):
+        """
+        Retrieve predictions on data.
+
+        :param data: DataFrame with .png image paths on column "Input Image", optionally with corresponding "Ground Truth" image paths.
+        :param save_folder: Folder to save output to.
+        :param verbose: Verbosity.
+        :param run_analysis: Run analysis on prediction quality (only is "Ground Truth" is available).
+        :return:
+        """
+
         if data is None:
-            return None
-        
+            print("No data passed")
+            return
+
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
 
         if not os.path.exists(save_folder + "/predictions"):
             os.makedirs(save_folder + "/predictions")
-        
+
         # generate ds from data
         idx = pd.IndexSlice
-        dataset = data.loc[:, idx["Input Image", "Ground Truth"]]
-        dataset.columns = pd.Index(data=["raw_path", "mask_path"])
-        
+        if ("Ground Truth" in data.columns) and run_analysis:
+            dataset = data.loc[:, idx["Input Image", "Ground Truth"]]
+            dataset.columns = pd.Index(data=["raw_path", "mask_path"])
+        else:
+            dataset = data.loc[:, idx["Input Image"]]
+            dataset.columns = pd.Index(data=["raw_path"])
+
         # get tf_ds
         gen = prep.Prep.get_tf_dataset(
             ds=dataset,
             image_size=self.setup.net_config.image_size,
             batch_size=1,
+            shard=False,
+            prep_x=self.prep_x,
+            prep_y=self.prep_y,
+            return_y=run_analysis,
         )
 
-        options = tf.data.Options()
-        options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-        
-        gen = gen.with_options(options)
-        
         amount = len(gen)
-        
+
         for (i, (x, y)) in enumerate(gen):
             if verbose == 1:
                 print(str(i + 1) + " / " + str(amount))
@@ -282,16 +330,32 @@ class Segmenter:
             pred = self.model.predict(x)
 
             for (j, w) in enumerate(pred):
-                name = vis.VisualizerAssist.pred_name(data, i, 0, name_format=self.setup.pipeline_config.name_format)
-                vis.VisualizerAssist.save_output(
-                    name,
-                    w,
-                    data.iloc[i+j]["Input Image"],
-                    data.iloc[i+j]["Ground Truth"],
-                    save_folder,
-                    print_options=self.setup.pipeline_config.print_options,
-                )
-        
+                if run_analysis:
+                    name = vis.VisualizerAssist.pred_name(data, i, 0, name_format=self.setup.pipeline_config.name_format)
+                    input_img_path = data.iloc[i + j]["Input Image"]
+                    target_img_path = data.iloc[i + j]["Ground Truth"]
+
+                    vis.VisualizerAssist.save_output(
+                        name=name,
+                        pred=w,
+                        save_folder=save_folder,
+                        input_img_path=input_img_path,
+                        target_img_path=target_img_path,
+                        print_options=self.setup.pipeline_config.print_options,
+                    )
+                else:
+                    name = vis.VisualizerAssist.pred_name(data, i, 0, name_format=['Name'])
+                    input_img_path = data.iloc[i + j]["Input Image"]
+                    target_img_path = data.iloc[i + j]["Ground Truth"]
+
+                    vis.VisualizerAssist.save_output(
+                        name=name,
+                        pred=w,
+                        save_folder=save_folder,
+                        input_img_path=input_img_path,
+                        target_img_path=target_img_path,
+                        print_options=self.setup.pipeline_config.print_options,
+                    )
 
     def update_trainable_params(self, state):
 
@@ -349,19 +413,18 @@ class Segmenter:
         # print("\n\nEvaluating model " + self.model_name + ":\n\n")
         # results = self.model.evaluate(self.tst_gen)
         # print("\nEvaluation results:", results)
-        
-        if plot_training:    
+
+        if plot_training:
             self.epoch_results = vis.plot_training(self.history, self.model_name)
 
         print("\n\nRetrieving model statistics:\n\n")
 
         # self.data, self.data_info = QualityAssurance.retrieve_stats2(model=self.model, stat_gen=self.stt_gen, dataset=self.stt_dataset)
         self.data, self.data_info = QualityAssurance.retrieve_stats2(
-            model=self.model, 
+            model=self.model,
             dataset=self.stt_dataset,
             image_size=self.setup.net_config.image_size,
         )
-
 
         (self.dataf, self.data_infof, self.data_sorted,) = QualityAssurance.format_table(
             data=self.data,

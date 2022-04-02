@@ -217,11 +217,10 @@ class QualityAssurance:
         model,
         # stat_gen,
         dataset,
-        image_size=(512,512),
+        image_size=(512, 512),
         verbose=1,
     ):
         """Retrieve quality statistics based on stat dataset (tf.Dataset)"""
-
 
         gen = prep.get_tf_dataset(
             ds=dataset,
@@ -292,7 +291,6 @@ class QualityAssurance:
         name_format=["Average", "Name"],
         print_options=[True, True, True, True, True, True],
         verbose=1,
-        
     ):
         """Save example predictions."""
 
@@ -303,7 +301,7 @@ class QualityAssurance:
 
             if not os.path.exists(save_folder + "/predictions"):
                 os.makedirs(save_folder + "/predictions")
-            
+
             # generate ds from data
             idx = pd.IndexSlice
             dataset = data.loc[:, idx["Input Image", "Ground Truth"]]
@@ -318,7 +316,7 @@ class QualityAssurance:
 
             options = tf.data.Options()
             options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-            
+
             gen = gen.with_options(options)
 
             for (i, (x, y)) in enumerate(gen):
@@ -333,14 +331,14 @@ class QualityAssurance:
                     save_output(
                         name,
                         w,
-                        data.iloc[i+j]["Input Image"],
-                        data.iloc[i+j]["Ground Truth"],
+                        data.iloc[i + j]["Input Image"],
+                        data.iloc[i + j]["Ground Truth"],
                         save_folder,
                         print_options=print_options,
                     )
 
         return
-    
+
     @staticmethod
     def get_bad_preds(
         model,
@@ -382,7 +380,6 @@ class QualityAssurance:
             bad_gen = bad_gen.batch(1, drop_remainder=True)
             bad_gen = bad_gen.prefetch(tf.data.AUTOTUNE)
 
-
             save_preds(
                 model=model,
                 stat_gen=bad_gen,
@@ -394,10 +391,6 @@ class QualityAssurance:
             )
 
         return
-
-    
-
-
 
     @staticmethod
     def format_table(
@@ -464,13 +457,26 @@ class VisualizerAssist:
 
     @staticmethod
     def save_output(
-        name,
+        name: str,
         pred,
-        input_img_path,
-        target_img_path,
-        save_folder,
+        save_folder: str,
+        input_img_path: str = "",
+        target_img_path: str = "",
         print_options=[True, True, True, True, True, True],
     ):
+        """Saves output"""
+
+        print_options = print_options
+
+        # if no input path is passed, do not try to generate ground truth images
+        if input_img_path == "":
+            print_options[2] = False
+            print_options[3] = False
+
+        # if no target path is passed, do not try to generate ground truth images
+        if target_img_path == "":
+            print_options[4] = False
+            print_options[5] = False
 
         if print_options[0]:
             img = PIL.ImageOps.autocontrast(tf.keras.preprocessing.image.array_to_img(pred))
