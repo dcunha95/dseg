@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan  7 16:50:56 2022
-
-@author: griffo1
-"""
-
-import os
 
 
 class PipelineConfig:
@@ -58,7 +49,6 @@ class NetConfig:
         self.label_amount = label_amount
         self.kernel_initializer = kernel_initializer
         self.bias_initializer = bias_initializer
-
 
 class FitConfig:
     def __init__(

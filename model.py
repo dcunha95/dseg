@@ -1,165 +1,197 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan  7 15:33:32 2022
-
-@author: griffo1
-"""
-
 import tensorflow as tf
 import pandas as pd
 import seaborn as sns
 import os
+from typing import Union
+import numpy as np
 
-import dseg.manager as man
-import dseg.visualize as vis
-from dseg.visualize import QualityAssurance
-import dseg.nets as nets
-import dseg.preprocessing as prep
-
-
-# from IPython.display import Image
+from dseg.setup import PipelineConfig, FitConfig, NetConfig, Setup
+from dseg.data_manipulator import DataUtils, TrainingUtils, PlotUtils
+from dseg.nets import NetBuilder
 
 
-class Segmenter:
-    def __init__(
-        self,
-        setup,
-        model_name="ivus_seg",
-    ):
+class Model:
+    def __init__(self, setup: Setup = Setup(), model_name: str = "model"):
+        self.__model_name = model_name
+        self.__setup = setup
 
-        self.model_name = model_name
-        self.setup = setup
-        self.trn_dataset = None
-        self.val_dataset = None
-        self.tst_dataset = None
-        self.stt_dataset = None
+        self.__trn_dataset = None
+        self.__val_dataset = None
+        self.__tst_dataset = None
+        self.__stt_dataset = None
 
-        self.trn_gen = None
-        self.val_gen = None
-        self.tst_gen = None
-        self.stt_gen = None
+        self.__dataset_ready = False
+        self.__fitted = False
+        self.__analysed = False
 
-        self.metrics = [tf.keras.metrics.MeanIoU(num_classes=self.setup.net_config.label_amount)]
+        self.__history = None
+        self.__metrics = [tf.keras.metrics.MeanIoU(
+            num_classes=self.setup.net_config.label_amount)]
 
-        self.history = None
-        self.callbacks = None
-        self.model = None
+        self.__analysis = None
 
-        self.epoch_results = None
+        # update name and create folder
+        self.__model_name = DataUtils.update_model_name(self.__model_name)
 
-        self.data = None
-        self.data_info = None
-        self.dataf = None
-        self.data_infof = None
-        self.data_sorted = None
+        if self.__setup.model_from_file is None:
 
-        self.b_ds_ready = False
-        self.b_fitted = False
-        self.b_analysed = False
+            if self.__setup.net_config.model_type == "unet":
+                self.__model = NetBuilder.unet(
+                    net_config=self.setup.net_config)
 
-        # create folder and update model name
-        k = 0
-        self.model_name = self.model_name + "_" + str(k)
-        while os.path.exists(self.model_name):
-            k += 1
-            n = [i + "_" for i in self.model_name.split(sep="_")[:-1]]
-            name = ""
-            for i in n:
-                name += i
-            self.model_name = name + str(k)
+            if self.__setup.net_config.model_type == "unet++":
+                self.__model = NetBuilder.unet_pp(
+                    net_config=self.setup.net_config)
 
-        os.makedirs(self.model_name)
-
-        # build model (net)
-        if self.setup.model_from_file is None:
-
-            if self.setup.net_config.model_type == "unet":
-                self.model = nets.unet_14(net_config=self.setup.net_config)
-
-            if self.setup.net_config.model_type == "unet++":
-                self.model = nets.unet_pp_13(net_config=self.setup.net_config)
-
-            if self.setup.net_config.model_type == "old_unet":
-                self.model = nets.unet_4(
-                    input_shape=self.setup.net_config.input_shape,
-                    base_filters=self.setup.net_config.base_filters,
-                    kernel_size=self.setup.net_config.kernel_size,
-                    dropout_amount=self.setup.net_config.dropout_amount,
-                    label_amount=3,
-                    node_type=4,
-                    use_bn=self.setup.net_config.use_bn,
-                )
-
-            if self.setup.net_config.model_type == "old_unet++":
-                self.model = nets.unet_pp_10(
-                    input_shape=self.setup.net_config.input_shape,
-                    base_filters=self.setup.net_config.base_filters,
-                    kernel_size=self.setup.net_config.kernel_size,
-                    dropout_amount=self.setup.net_config.dropout_amount,
-                    label_amount=3,
-                    node_type=4,
-                    use_bn=self.setup.net_config.use_bn,
-                )
         # load existing model (net)
         else:
-            self.model = tf.keras.models.load_model(
+            self.__model = tf.keras.models.load_model(
                 self.setup.model_from_file,
-                custom_objects={"get_iou_loss": QualityAssurance.get_iou_loss},
+                custom_objects={"get_iou_loss": TrainingUtils.iou_loss},
             )
             self.b_fitted = True
 
         # setup callbacks
-        self.callbacks = [
+        self.__callbacks = [
             tf.keras.callbacks.ModelCheckpoint(
-                self.model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor, verbose=1
+                self.__model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor, verbose=1
             )
         ]
 
         # setup learning rate scheduler
         if self.setup.fit_config.lr_decay_after_epoch is not None:
 
-            def scheduler(
-                epoch,
-                lr,
-            ):
-                if epoch < self.setup.fit_config.lr_decay_after_epoch:
-                    return lr
-                else:
-                    return lr * tf.math.exp(-self.setup.fit_config.lr_decay)
+            scheduler = TrainingUtils.get_scheduler_function(
+                threshold=self.setup.fit_config.lr_decay_after_epoch,
+                decay=self.setup.fit_config.lr_decay,
+            )
 
-            self.callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
+            self.__callbacks.append(
+                tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
 
         # x and y preprocessing
-        self.prep_x = prep.Prep.prep_x
-        self.prep_y = prep.Prep.prep_y
+        self.__prep_x = TrainingUtils.prep_x
+        self.__prep_y = TrainingUtils.prep_y
 
-    def get_ds(self, ds, use_tf_data: bool = True):
+        # generators (tf.data)
+        self.__trn_gen = None
+        self.__val_gen = None
+        self.__tst_gen = None
+        self.__stt_gen = None
+
+    @property
+    def model_name(self):
+        """Model name."""
+        return self.__model_name
+
+    @property
+    def setup(self):
+        """Setup Object."""
+        return self.__setup
+
+    @property
+    def trn_dataset(self):
+        """Dataset used for training."""
+        return self.__trn_dataset
+
+    @property
+    def val_dataset(self):
+        """Dataset used for validation."""
+        return self.__val_dataset
+
+    @property
+    def tst_dataset(self):
+        """Dataset used for testing."""
+        return self.__tst_dataset
+
+    @property
+    def stt_dataset(self):
+        """Dataset used for statistics retrieval."""
+        return self.__stt_dataset
+
+    @property
+    def dataset_ready(self):
+        """True if model is prepared for training, False otherwise."""
+        return self.__dataset_ready
+
+    @property
+    def fitted(self):
+        """True if model has been trained, False otherwise."""
+        return self.__fitted
+
+    @property
+    def analysed(self):
+        """True if model has had statistics calculated, False otherwise."""
+        return self.__analysed
+
+    @property
+    def prep_x(self):
+        """Pre-processing routine for inputs."""
+        return self.__prep_x
+
+    @property
+    def prep_y(self):
+        """Pre-processing routine for ground truths."""
+        return self.__prep_y
+
+    @property
+    def analysis(self):
+        """Dictionary containing analysis results"""
+        return self.__analysis
+
+    def get_dataset(
+        self,
+        trn: Union[str, pd.DataFrame] = "../dataset/dataset_1MC_train.csv",
+        val: Union[str, pd.DataFrame] = "../dataset/dataset_1MC_val.csv",
+        tst: Union[str, pd.DataFrame] = "../dataset/dataset_1MC_test.csv",
+        stt: Union[str, pd.DataFrame] = "../dataset/dataset_1MC_stat.csv",
+        tf_data: bool = True,
+    ):
         """
-        Builds the dataset objects.
+        Loads dataset partitions. Must be either the dataset reference DataFrame itself or the path to it.
 
-        :param ds:
-        :param use_tf_data:
+        :param trn:
+        :param val:
+        :param tst:
+        :param stt:
+        :param tf_data:
         :return:
         """
 
-        self.trn_dataset = ds[0]
-        self.val_dataset = ds[1]
-        self.tst_dataset = ds[2]
-        self.stt_dataset = ds[3]
+        # if it is a path load the dataset, otherwise receive it
+        if isinstance(trn, str):
+            self.__trn_dataset = DataUtils.load_dataset_reference(trn)
+        else:
+            self.__trn_dataset = trn
 
-        min_bs = min(len(ds[0]), len(ds[1]), len(ds[2]), len(ds[3]), self.setup.fit_config.batch_size)
+        if isinstance(val, str):
+            self.__val_dataset = DataUtils.load_dataset_reference(val)
+        else:
+            self.__val_dataset = val
 
-        if min_bs != self.setup.fit_config.batch_size:
-            self.setup.fit_config.batch_size = min_bs
-            print("batch_size too big, changing to ", min_bs, sep="")
+        if isinstance(tst, str):
+            self.__tst_dataset = DataUtils.load_dataset_reference(tst)
+        else:
+            self.__tst_dataset = tst
 
-        if use_tf_data:
+        if isinstance(stt, str):
+            self.__stt_dataset = DataUtils.load_dataset_reference(stt)
+        else:
+            self.__stt_dataset = stt
 
+        ds = self.__trn_dataset, self.__val_dataset, self.__tst_dataset, self.__stt_dataset
+
+        min_batch_size = min(len(ds[0]), len(ds[1]), len(
+            ds[2]), len(ds[3]), self.setup.fit_config.batch_size)
+
+        if min_batch_size != self.setup.fit_config.batch_size:
+            self.setup.fit_config.batch_size = min_batch_size
+
+        if tf_data:
             image_size = self.setup.net_config.image_size
             batch_size = self.setup.fit_config.batch_size
 
-            self.trn_gen = prep.Prep.get_tf_dataset(
+            self.__trn_gen = TrainingUtils.get_tf_dataset(
                 ds=self.trn_dataset,
                 image_size=image_size,
                 batch_size=batch_size,
@@ -168,7 +200,7 @@ class Segmenter:
                 return_y=True,
             )
 
-            self.val_gen = prep.Prep.get_tf_dataset(
+            self.__val_gen = TrainingUtils.get_tf_dataset(
                 # ds=self.val_dataset,
                 ds=self.stt_dataset,
                 image_size=image_size,
@@ -178,7 +210,7 @@ class Segmenter:
                 return_y=True,
             )
 
-            self.tst_gen = prep.Prep.get_tf_dataset(
+            self.__tst_gen = TrainingUtils.get_tf_dataset(
                 ds=self.tst_dataset,
                 image_size=image_size,
                 batch_size=batch_size,
@@ -187,7 +219,7 @@ class Segmenter:
                 return_y=True,
             )
 
-            self.stt_gen = prep.Prep.get_tf_dataset(
+            self.__stt_gen = TrainingUtils.get_tf_dataset(
                 ds=self.stt_dataset,
                 image_size=image_size,
                 batch_size=batch_size,
@@ -196,37 +228,12 @@ class Segmenter:
                 return_y=True,
             )
 
-        else:
-            self.trn_gen = man.KerasManager(
-                self.setup.fit_config.batch_size,
-                self.setup.net_config.image_size,
-                self.trn_dataset,
-            )
-
-            self.val_gen = man.KerasManager(
-                self.setup.fit_config.batch_size,
-                self.setup.net_config.image_size,
-                self.val_dataset,
-            )
-
-            self.tst_gen = man.KerasManager(
-                self.setup.fit_config.batch_size,
-                self.setup.net_config.image_size,
-                self.tst_dataset,
-            )
-
-            self.stt_gen = man.KerasManager(
-                10,
-                self.setup.net_config.image_size,
-                self.stt_dataset,
-            )
-
-        self.b_ds_ready = True
+            self.__dataset_ready = True
 
     def compile(self, fit_config=None):
         """
         Compiles the model.
-        
+
         :param fit_config: 
         """ ""
 
@@ -247,14 +254,14 @@ class Segmenter:
                 opt = tf.keras.mixed_precision.LossScaleOptimizer(opt)
 
         if fit_config.loss == "iou":
-            loss = QualityAssurance.get_iou_loss
+            loss = TrainingUtils.iou_loss
         else:
             loss = fit_config.loss
 
-        self.model.compile(
+        self.__model.compile(
             optimizer=opt,
             loss=loss,
-            metrics=self.metrics,
+            metrics=self.__metrics,
         )
 
     def fit(self, fit_config=None):
@@ -263,23 +270,23 @@ class Segmenter:
         if fit_config is None:
             fit_config = self.setup.fit_config
 
-        self.history = self.model.fit(
-            self.trn_gen,
+        self.__history = self.__model.fit(
+            self.__trn_gen,
             epochs=fit_config.epochs,
-            validation_data=self.val_gen,
-            callbacks=self.callbacks,
+            validation_data=self.__val_gen,
+            callbacks=self.__callbacks,
         )
 
-        self.model.save(self.model_name + "/model.h5")
+        self.__model.save(self.model_name + "/model.h5")
 
-        self.b_fitted = True
+        self.__fitted = True
 
     def predict(
         self,
-        data: pd.DataFrame = None,
+        data: pd.DataFrame,
         save_folder: str = "",
         verbose: int = 1,
-        run_analysis: bool = True,
+        simple_print: bool = True,
     ):
         """
         Retrieve predictions on data.
@@ -287,13 +294,12 @@ class Segmenter:
         :param data: DataFrame with .png image paths on column "Input Image", optionally with corresponding "Ground Truth" image paths.
         :param save_folder: Folder to save output to.
         :param verbose: Verbosity.
-        :param run_analysis: Run analysis on prediction quality (only is "Ground Truth" is available).
+        :param simple_print:
         :return:
         """
 
-        if data is None:
-            print("No data passed")
-            return
+        if save_folder == "":
+            save_folder = self.model_name
 
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
@@ -301,63 +307,82 @@ class Segmenter:
         if not os.path.exists(save_folder + "/predictions"):
             os.makedirs(save_folder + "/predictions")
 
-        # generate ds from data
-        idx = pd.IndexSlice
-        if ("Ground Truth" in data.columns) and run_analysis:
-            dataset = data.loc[:, idx["Input Image", "Ground Truth"]]
-            dataset.columns = pd.Index(data=["raw_path", "mask_path"])
-        else:
-            dataset = data.loc[:, idx["Input Image"]]
-            dataset.columns = pd.Index(data=["raw_path"])
+        # get available columns
+        dataset = data.copy()
+        col_dict = {
+            "raw_path": "raw_path",
+            "Input Image": "raw_path",
+            "mask_path": "mask_path",
+            "Ground Truth": "mask_path",
+            "file_name": "file_name",
+            "Name": "file_name",
+            "iou_avg": "iou_avg",
+            "Average": "iou_avg",
+        }
 
-        # get tf_ds
-        gen = prep.Prep.get_tf_dataset(
+        cols = []
+        for i in data.columns:
+            if i in col_dict:
+                dataset[col_dict[i]] = data.loc[:, [i]]
+                cols = [col_dict[i], *cols]
+
+        dataset = dataset[cols]
+
+        # if not already available, get name from raw_path:
+        if "file_name" not in data.columns:
+            dataset["file_name"] = dataset.raw_path.str.split("\\").apply(
+                lambda x: x[-1]).str.split(".").apply(lambda x: x[0])
+
+        gen = TrainingUtils.get_tf_dataset(
             ds=dataset,
             image_size=self.setup.net_config.image_size,
             batch_size=1,
             shard=False,
             prep_x=self.prep_x,
             prep_y=self.prep_y,
-            return_y=run_analysis,
+            return_y=False,
         )
 
-        amount = len(gen)
+        print_options = self.setup.pipeline_config.print_options
 
-        for (i, (x, y)) in enumerate(gen):
+        # print options: [raw, output, input, input_original, gt, gt_original]
+        if simple_print:
+            print_options = [False, True, False, False,
+                             False, False]  # print only the output
+            name_format = ["file_name"]
+        else:
+            print_options = [*print_options]  # default options set at setup
+            # name_format = [col_dict[i] for i in self.setup.pipeline_config.name_format]
+            name_format = [*self.setup.pipeline_config.name_format]
+
+        # predict all
+        amount = len(gen)
+        for (i, x) in enumerate(gen):
             if verbose == 1:
                 print(str(i + 1) + " / " + str(amount))
 
-            pred = self.model.predict(x)
+            pred = self.__model.predict(x)
 
             for (j, w) in enumerate(pred):
-                if run_analysis:
-                    name = vis.VisualizerAssist.pred_name(data, i, 0, name_format=self.setup.pipeline_config.name_format)
-                    input_img_path = data.iloc[i + j]["Input Image"]
-                    target_img_path = data.iloc[i + j]["Ground Truth"]
+                name = PlotUtils.pred_name(data, i, 0, name_format=name_format)
+                input_img_path = dataset.iloc[i + j]["raw_path"]
 
-                    vis.VisualizerAssist.save_output(
-                        name=name,
-                        pred=w,
-                        save_folder=save_folder,
-                        input_img_path=input_img_path,
-                        target_img_path=target_img_path,
-                        print_options=self.setup.pipeline_config.print_options,
-                    )
+                # check if ground truth is available
+                if "mask_path" in dataset.columns:
+                    target_img_path = dataset.iloc[i + j]["mask_path"]
                 else:
-                    name = vis.VisualizerAssist.pred_name(data, i, 0, name_format=['Name'])
-                    input_img_path = data.iloc[i + j]["Input Image"]
-                    target_img_path = data.iloc[i + j]["Ground Truth"]
+                    target_img_path = ""
 
-                    vis.VisualizerAssist.save_output(
-                        name=name,
-                        pred=w,
-                        save_folder=save_folder,
-                        input_img_path=input_img_path,
-                        target_img_path=target_img_path,
-                        print_options=self.setup.pipeline_config.print_options,
-                    )
+                PlotUtils.save_output(
+                    name=name,
+                    pred=w,
+                    save_folder=save_folder,
+                    input_img_path=input_img_path,
+                    target_img_path=target_img_path,
+                    print_options=print_options,
+                )
 
-    def update_trainable_params(self, state):
+    def update_trainable_params(self, state: str = "train_all"):
 
         possible_states = {
             "unet": ["train_all", "fine_tuning"],
@@ -366,17 +391,18 @@ class Segmenter:
         }
 
         if state not in possible_states[self.setup.net_config.model_type]:
-            raise ValueError("Error updating trainable parameters: inappropriate state trying to be set.")
+            raise ValueError(
+                "Error updating trainable parameters: inappropriate state trying to be set.")
 
-        for layer in self.model.layers:
+        for layer in self.__model.layers:
             layer.trainable = False
 
         if state == "train_all":
-            for layer in self.model.layers:
+            for layer in self.__model.layers:
                 layer.trainable = True
 
         if state == "fine_tuning":
-            for layer in self.model.layers:
+            for layer in self.__model.layers:
                 if isinstance(layer, tf.keras.Model):
                     for sublayer in layer.layers:
                         if isinstance(sublayer, tf.keras.layers.BatchNormalization):
@@ -390,160 +416,218 @@ class Segmenter:
                     layer.trainable = True
 
         if state == "hold_backbone":
-            for layer in self.model.layers:
+            for layer in self.__model.layers:
                 layer.trainable = True
 
             for i in range(self.setup.net_config.depth):
                 name = "bm_" + str(i) + "_0"
-                self.model.get_layer(name=name).trainable = False
+                self.__model.get_layer(name=name).trainable = False
 
         if state == "train_outer_net":
             for i in range(self.setup.net_config.depth):
                 name_left = "bm_" + str(i) + "_0"
-                name_right = "bm_" + str(i) + "_" + str(self.setup.net_config.depth - i - 1)
-                self.model.get_layer(name=name_left).trainable = True
-                self.model.get_layer(name=name_right).trainable = True
+                name_right = "bm_" + str(i) + "_" + \
+                    str(self.setup.net_config.depth - i - 1)
+                self.__model.get_layer(name=name_left).trainable = True
+                self.__model.get_layer(name=name_right).trainable = True
 
-    def run_analysis(self, plot_training=True):
-        """Run analysis on model quality."""
+    def plot_training(self, save_folder=None):
+        """
+        Saves training values and plot to .csv file, returns values in DataFrame format.
 
-        if not self.b_fitted:
-            raise ValueError("Model not fitted")
-
-        # print("\n\nEvaluating model " + self.model_name + ":\n\n")
-        # results = self.model.evaluate(self.tst_gen)
-        # print("\nEvaluation results:", results)
-
-        if plot_training:
-            self.epoch_results = vis.plot_training(self.history, self.model_name)
-
-        print("\n\nRetrieving model statistics:\n\n")
-
-        # self.data, self.data_info = QualityAssurance.retrieve_stats2(model=self.model, stat_gen=self.stt_gen, dataset=self.stt_dataset)
-        self.data, self.data_info = QualityAssurance.retrieve_stats2(
-            model=self.model,
-            dataset=self.stt_dataset,
-            image_size=self.setup.net_config.image_size,
-        )
-
-        (self.dataf, self.data_infof, self.data_sorted,) = QualityAssurance.format_table(
-            data=self.data,
-            data_info=self.data_info,
-            dataset=self.stt_dataset,
-            save_folder=self.model_name,
-        )
-
-        self.b_analysed = True
-
-    def save_model_plot(
-        self,
-        show_shapes=False,
-        show_dtype=False,
-        show_layer_names=True,
-        rankdir="TB",
-    ):
+        :param save_folder:
+        :return: DataFrame
         """
 
-        :param show_shapes:
-        :param show_dtype:
-        :param show_layer_names:
-        :param rankdir:
+        if not self.__fitted or self.__history is None:
+            raise ValueError(
+                "Can't plot training, not yet fitted or training info not available.")
+
+        if save_folder is None:
+            save_folder = self.model_name
+
+        training = pd.DataFrame()
+
+        training["Loss"] = self.__history.history["loss"]
+        training["Val. Loss"] = self.__history.history["val_loss"]
+        training["Mean IoU"] = self.__history.history["mean_io_u"]
+        training["Val. Mean IoU"] = self.__history.history["val_mean_io_u"]
+
+        training["Epoch"] = np.arange(1, len(training) + 1)
+        training.set_index("Epoch", inplace=True)
+
+        sns.set_theme(style="ticks")
+
+        graph = sns.lineplot(data=training, palette="bright",
+                             markers=True, dashes=False)
+        graph.set(
+            xlim=(1, len(training)),
+            ylim=(0, 1),
+            ylabel="Metric",
+            xticks=np.arange(1, len(training) + 1),
+        )
+        graph.tick_params(axis="x", which="major", labelsize=7, rotation=45)
+        graph.tick_params(axis="y", which="major", labelsize=8, rotation=0)
+        graph.get_figure().savefig(save_folder + "/training_results.png", format="png", dpi=800)
+        graph.get_figure().clf()
+
+        training.to_csv(save_folder + "/training_results.csv")
+
+        return training
+
+    def run_analysis(self, ref_data: pd.DataFrame = None, save_folder: str = "", verbose: bool = True):
+        """
+        Run prediction quality analysis routine on reference data. If none passed, will run on stats dataset.
+
+        :param ref_data:
+        :param save_folder:
+        :param verbose:
         :return:
         """
-        tf.keras.utils.plot_model(
-            model=self.model,
-            to_file=self.model_name + "/model_expanded.png",
-            show_shapes=show_shapes,
-            rankdir=rankdir,
-            show_layer_names=show_layer_names,
-            show_dtype=show_dtype,
-            expand_nested=True,
-            dpi=96,
-        )
 
-        tf.keras.utils.plot_model(
-            model=self.model,
-            to_file=self.model_name + "/model.png",
-            show_shapes=show_shapes,
-            rankdir=rankdir,
-            show_layer_names=show_layer_names,
-            show_dtype=show_dtype,
-            expand_nested=False,
-            dpi=96,
-        )
+        if not self.__fitted:
+            raise ValueError("Model not fitted")
 
-        bmodel = nets.get_base(
-            input_shape=self.setup.net_config.input_shape,
-            level=0,
-            base_filters=self.setup.net_config.base_filters,
-            kernel_size=self.setup.net_config.kernel_size,
-            dropout_amount=self.setup.net_config.dropout_amount,
-            node_type=self.setup.net_config.node_type,
-            use_bn=self.setup.net_config.use_bn,
-            name="bm",
-        )
+        if save_folder == "":
+            save_folder = self.model_name
 
-        tf.keras.utils.plot_model(
-            model=bmodel,
-            to_file=self.model_name + "/model_base.png",
-            show_shapes=show_shapes,
-            rankdir=rankdir,
-            show_layer_names=show_layer_names,
-            show_dtype=show_dtype,
-            expand_nested=True,
-            dpi=192,
-        )
+        if ref_data is None:
+            ref_data = self.__stt_dataset
 
-    def save_metrics(self):
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
 
-        if not self.b_analysed:
-            raise ValueError("Model not analysed.")
+        if not os.path.exists(save_folder + "/predictions"):
+            os.makedirs(save_folder + "/predictions")
 
-        self.dataf.to_csv(self.model_name + "/metrics.csv")
-        self.data_infof.to_csv(self.model_name + "/metrics_summary.csv")
-        self.data_sorted.to_csv(self.model_name + "/metrics_sorted.csv")
+        # get available columns
+        dataset = ref_data.copy()
+        col_dict = {
+            "raw_path": "raw_path",
+            "Input Image": "raw_path",
+            "mask_path": "mask_path",
+            "Ground Truth": "mask_path",
+            "file_name": "file_name",
+            "Name": "file_name",
+            "iou_avg": "iou_avg",
+            "Average": "iou_avg",
+        }
 
-    def save_plots(self):
+        cols = []
+        for i in ref_data.columns:
+            if i in col_dict:
+                dataset[col_dict[i]] = ref_data.loc[:, [i]]
+                cols = [col_dict[i], *cols]
 
-        if not self.b_analysed:
-            raise ValueError("Model not analysed.")
+        dataset = dataset[cols]
 
-        vis.VisualizerAssist.save_plots(data=self.data, data_info=self.data_info, save_folder=self.model_name, dpi=400, ci=None)
+        # if not already available, get name from raw_path:
+        if "file_name" not in ref_data.columns:
+            dataset["file_name"] = dataset.raw_path.str.split("\\").apply(
+                lambda x: x[-1]).str.split(".").apply(lambda x: x[0])
 
-    def save_examples(
-        self,
-        preds_amount=20,
-        bad_preds_amount=20,
-    ):
-        print("Saving examples")
-        if not self.b_analysed:
-            raise ValueError("Model not analysed")
-
-        print("\n\nRetrieving", preds_amount, "predictions:\n\n")
-
-        QualityAssurance.save_preds(
-            model=self.model,
-            data=self.dataf,
-            save_folder=self.model_name,
+        gen = TrainingUtils.get_tf_dataset(
+            ds=dataset,
             image_size=self.setup.net_config.image_size,
-            amount=preds_amount,
-            name_format=self.setup.pipeline_config.name_format,
-            print_options=self.setup.pipeline_config.print_options,
-            verbose=1,
+            batch_size=1,
+            shard=False,
+            prep_x=self.prep_x,
+            prep_y=self.prep_y,
+            return_y=True,
         )
 
-        print("\n\nRetrieving", bad_preds_amount, "worst predictions:\n\n")
+        print_options = self.setup.pipeline_config.print_options
 
-        QualityAssurance.save_preds(
-            model=self.model,
-            data=self.data_sorted,
+        # predict all
+        amount = len(gen)
+        stats_list = [None for k in range(amount)]
+        for (i, (x, y)) in enumerate(gen):
+
+            if verbose == 1:
+                print(str(i + 1) + " / " + str(amount))
+
+            pred = self.__model.predict(x)
+
+            for (j, w) in enumerate(pred):
+                name = PlotUtils.pred_name(ref_data, i, 0, name_format=[
+                                           "iou_avg", "file_name"])
+                input_img_path = dataset.iloc[i + j]["raw_path"]
+                target_img_path = dataset.iloc[i + j]["mask_path"]
+
+                stats_list[i + j] = TrainingUtils.prediction_metrics(
+                    prediction=w, target_img_path=target_img_path)
+
+                # PlotUtils.save_output(
+                #     name=name,
+                #     pred=w,
+                #     save_folder=save_folder,
+                #     input_img_path=input_img_path,
+                #     target_img_path=target_img_path,
+                #     print_options=print_options,
+                # )
+
+        data = pd.DataFrame(
+            np.array(stats_list, dtype="float32"),
+            columns=[
+                "Average",
+                "Outer",
+                "Lumen",
+                "Plaque",
+                "Vessel",
+                "Lumen Area [mm²]",
+                "Lumen Area GT [mm²]",
+                "Plaque Area [mm²]",
+                "Plaque Area GT [mm²]",
+                "Vessel Area [mm²]",
+                "Vessel Area GT [mm²]",
+            ],
+        )
+
+        # More metrics
+        data["Lumen Area Ratio"] = data["Lumen Area [mm²]"] / \
+            data["Lumen Area GT [mm²]"]
+        data["Plaque Area Ratio"] = data["Plaque Area [mm²]"] / \
+            data["Plaque Area GT [mm²]"]
+        data["Vessel Area Ratio"] = data["Vessel Area [mm²]"] / \
+            data["Vessel Area GT [mm²]"]
+
+        # A single image has 100mm2
+        data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"] = 100 * \
+            data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"]
+
+        # Even more
+        data["Plaque Burden"] = data["Plaque Area [mm²]"] / \
+            data["Vessel Area [mm²]"]
+        data["Plaque Burden GT"] = data["Plaque Area GT [mm²]"] / \
+            data["Vessel Area GT [mm²]"]
+
+        data["Plaque Burden Model/GT Ratio"] = data["Plaque Burden"] / \
+            data["Plaque Burden GT"]
+
+        data_info = data.describe()
+
+        data_formatted, data_info_formatted, data_sorted = DataUtils.format_table(
+            data=data,
+            data_info=data_info,
+            dataset=self.__stt_dataset,
+        )
+
+        out = {
+            "data_formatted": data_formatted,
+            "data_info_formatted": data_info_formatted,
+            "data_sorted": data_sorted,
+            "data": data,
+            "data_info": data_info,
+        }
+
+        self.__analysis = out
+
+        PlotUtils.save_plots(
+            data=self.analysis["data"],
+            data_info=self.analysis['data_info'],
             save_folder=self.model_name,
-            image_size=self.setup.net_config.image_size,
-            amount=bad_preds_amount,
-            name_format=self.setup.pipeline_config.name_format,
-            print_options=self.setup.pipeline_config.print_options,
-            verbose=1,
+            dpi=400,
+            ci=None,
         )
 
-    def save(self):
-        pass
+        self.__analysed = True
