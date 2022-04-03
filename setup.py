@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan  7 16:50:56 2022
-
-@author: griffo1
-"""
-
-import os
 
 
 class PipelineConfig:
@@ -14,16 +5,12 @@ class PipelineConfig:
         self,
         split=[0.6, 0.2, 0.2],
         dataset_percent=0.1,
-        preds_amount=50,
-        bad_preds_amount=50,
         print_options=[True, True, True, True, True, True],
         name_format=["Average", "Name"],
     ):
         # pipeline related:
         self.split = split
         self.dataset_percent = dataset_percent
-        self.preds_amount = preds_amount
-        self.bad_preds_amount = bad_preds_amount
         self.print_options = print_options  # print options: [raw, output, input, input_original, gt, gt_original]
         self.name_format = name_format
 
@@ -63,7 +50,6 @@ class NetConfig:
         self.kernel_initializer = kernel_initializer
         self.bias_initializer = bias_initializer
 
-
 class FitConfig:
     def __init__(
         self,
@@ -75,6 +61,7 @@ class FitConfig:
         lr_decay_after_epoch=None,
         lr_decay=0.05,
         loss="categorical_crossentropy",
+        monitor="val_loss",  # "val_loss" or "val_mean_io_u"
     ):
         # fit related:
         self.sample_weight = sample_weight
@@ -85,6 +72,7 @@ class FitConfig:
         self.lr_decay_after_epoch = lr_decay_after_epoch
         self.lr_decay = lr_decay
         self.loss = loss
+        self.monitor = monitor
 
 
 class Setup:
