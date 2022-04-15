@@ -187,7 +187,7 @@ class DataUtils:
             dataf.loc[:, i[0]] = dataf[i[0]].map("{:.4f}".format)
             data_infof.loc["mean":"max", i[0]] = data_infof.loc["mean":"max", i[0]].map("{:.4f}".format)
 
-        data_infof.index = ['Count', "Mean", "Std", "IQR", "Min", "25%", "50%", "75%", "Max"]
+        data_infof.index = ["Count", "Mean", "Std", "IQR", "Min", "25%", "50%", "75%", "Max"]
 
         dataf = dataf.astype("str")
         data_infof = data_infof.astype("str")
@@ -209,6 +209,25 @@ class DataUtils:
         # data_sorted.to_csv(save_folder + "/metrics_sorted.csv")
 
         return dataf, data_infof, data_sorted
+
+    @staticmethod
+    def make_tables(analysis, path=""):
+        """Generate appropriate LaTeX files at path/latex/."""
+
+        save_folder = os.path.join(path, "latex")
+
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
+
+        analysis["data_formatted"][["Name", "Average", "Lumen", "Plaque", "Vessel"]].to_latex(
+            save_folder + "/results_raw.tex", longtable=True
+        )
+
+        analysis["data_info_formatted"][["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results.tex")
+
+        analysis["data_info_formatted"][["Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]].to_latex(
+            save_folder + "/results_secondary.tex"
+        )
 
 
 class TrainingUtils:
@@ -711,7 +730,7 @@ class PlotUtils:
         PlotUtils.ratio_plots(
             name="Plaque Burden",
             gt_name="Plaque Burden GT",
-            ratio_name="Plaque Burden Model/GT Ratio",
+            ratio_name="PB. Ratio",
             file_name="plaque_burden_model_gt_comparison",
             data=data,
             data_info=data_info,

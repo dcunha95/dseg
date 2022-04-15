@@ -5,6 +5,8 @@ import os
 from typing import Union
 import numpy as np
 
+import matplotlib.pyplot as plt
+
 from dseg.setup import PipelineConfig, FitConfig, NetConfig, Setup
 from dseg.data_manipulator import DataUtils, TrainingUtils, PlotUtils
 from dseg.nets import NetBuilder
@@ -59,7 +61,7 @@ class Model:
         # setup callbacks
         self.__callbacks = [
             tf.keras.callbacks.ModelCheckpoint(
-                self.__model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor, verbose=1
+                self.__model_name + "/model.h5", save_best_only=True, monitor=self.setup.fit_config.monitor, verbose=0
             )
         ]
 
@@ -265,16 +267,22 @@ class Model:
         else:
             loss = fit_config.loss
 
+        loss_weights = None
         if self.setup.net_config.multi_output:
             loss = {
                 "lumen": loss,
                 "vessel": loss,
+            }
+            loss_weights = {
+                "lumen": 0.5,
+                "vessel": 0.5,
             }
 
         self.__model.compile(
             optimizer=opt,
             loss=loss,
             metrics=self.__metrics,
+            loss_weights=loss_weights,
         )
 
     def fit(self, fit_config=None):
@@ -470,6 +478,7 @@ class Model:
         training["Val. Loss"] = self.__history.history["val_loss"]
 
         if self.setup.net_config.multi_output:
+
             training["Lumen Loss"] = self.__history.history["lumen_loss"]
             training["Lumen Val. Loss"] = self.__history.history["val_lumen_loss"]
 
@@ -479,30 +488,47 @@ class Model:
             training["Lumen Mean IoU"] = self.__history.history["lumen_mean_io_u"]
             training["Lumen Val. Mean IoU"] = self.__history.history["val_lumen_mean_io_u"]
 
-            training["Vessel Mean IoU"] = self.__history.history["vessel_mean_io_u"]
-            training["Vessel Val. Mean IoU"] = self.__history.history["val_vessel_mean_io_u"]
+            training["Vessel Mean IoU"] = self.__history.history["vessel_mean_io_u_1"]
+            training["Vessel Val. Mean IoU"] = self.__history.history["val_vessel_mean_io_u_1"]
+
+            plots = [
+                ("lumen_training_results.png", ["Lumen Loss", "Lumen Val. Loss", "Lumen Mean IoU", "Lumen Val. Mean IoU"]),
+                ("vessel_training_results.png", ["Vessel Loss", "Vessel Val. Loss", "Vessel Mean IoU", "Vessel Val. Mean IoU"]),
+                ("training_results.png", ["Loss", "Val. Loss", "Lumen Val. Mean IoU", "Vessel Val. Mean IoU"]),
+            ]
 
         else:
+
             training["Mean IoU"] = self.__history.history["mean_io_u"]
             training["Val. Mean IoU"] = self.__history.history["val_mean_io_u"]
 
+            plots = [
+                ("training_results.png", [["Loss", "Val. Loss", "Mean IoU", "Val. Mean IoU"]]),
+            ]
 
         training["Epoch"] = np.arange(1, len(training) + 1)
         training.set_index("Epoch", inplace=True)
 
         sns.set_theme(style="ticks")
 
-        graph = sns.lineplot(data=training, palette="bright", markers=True, dashes=False)
-        graph.set(
-            xlim=(1, len(training)),
-            ylim=(0, 1),
-            ylabel="Metric",
-            xticks=np.arange(1, len(training) + 1),
-        )
-        graph.tick_params(axis="x", which="major", labelsize=7, rotation=45)
-        graph.tick_params(axis="y", which="major", labelsize=8, rotation=0)
-        graph.get_figure().savefig(save_folder + "/training_results.png", format="png", dpi=800)
-        graph.get_figure().clf()
+        for plot in plots:
+            graph = sns.lineplot(data=training[plot[1]], palette="bright", markers=True, dashes=False)
+            graph.set(
+                xlim=(1, len(training)),
+                ylim=(0, 1),
+                ylabel="Metric",
+                xticks=np.arange(1, len(training) + 1),
+            )
+
+            # h, l = graph.get_legend_handles_labels()
+            # # plt.legend(h, l, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
+            #
+            # plt.legend(h, l, bbox_to_anchor=(1.05, 1), borderaxespad=0.0)
+
+            graph.tick_params(axis="x", which="major", labelsize=7, rotation=45)
+            graph.tick_params(axis="y", which="major", labelsize=8, rotation=0)
+            graph.get_figure().savefig(save_folder + "/" + plot[0], format="png", dpi=800)
+            graph.get_figure().clf()
 
         training.to_csv(save_folder + "/training_results.csv")
 
@@ -632,11 +658,11 @@ class Model:
         data["Plaque Burden"] = data["Plaque Area [mm²]"] / data["Vessel Area [mm²]"]
         data["Plaque Burden GT"] = data["Plaque Area GT [mm²]"] / data["Vessel Area GT [mm²]"]
 
-        data["Plaque Burden Model/GT Ratio"] = data["Plaque Burden"] / data["Plaque Burden GT"]
+        data["PB. Ratio"] = data["Plaque Burden"] / data["Plaque Burden GT"]
 
         data_info = data.describe()
         data_info.loc["IQR"] = data_info.loc["75%"] - data_info.loc["25%"]
-        data_info = data_info.loc[['count', "mean", "std", "IQR", "min", "25%", "50%", "75%", "max"]]
+        data_info = data_info.loc[["count", "mean", "std", "IQR", "min", "25%", "50%", "75%", "max"]]
 
         data_formatted, data_info_formatted, data_sorted = DataUtils.format_table(
             data=data,
@@ -663,3 +689,5 @@ class Model:
         )
 
         self.__analysed = True
+
+
