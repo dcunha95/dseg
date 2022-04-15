@@ -219,15 +219,22 @@ class DataUtils:
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
 
-        analysis["data_formatted"][["Name", "Average", "Lumen", "Plaque", "Vessel"]].to_latex(
-            save_folder + "/results_raw.tex", longtable=True
-        )
+        raw_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
+        raw_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
 
-        analysis["data_info_formatted"][["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results.tex")
+        res_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
+        res_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
 
-        analysis["data_info_formatted"][["Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]].to_latex(
-            save_folder + "/results_secondary.tex"
-        )
+        raw = analysis["data_formatted"][raw_columns]
+        raw.columns = [raw_mod_columns]
+        raw.to_latex(save_folder + "/results_raw.tex", longtable=True)
+
+        res = analysis["data_info_formatted"][res_columns]
+        res.columns = [res_mod_columns]
+        res.to_latex(save_folder + "/results.tex")
+
+        res[["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results_primary.tex")
+        res[["L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]].to_latex(save_folder + "/results_secondary.tex")
 
 
 class TrainingUtils:
