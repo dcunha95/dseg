@@ -32,6 +32,7 @@ class NetConfig:
         label_amount=3,
         kernel_initializer="glorot_uniform",
         bias_initializer="zeros",
+        split_classes=False,
     ):
         # Net related:
         self.model_type = model_type
@@ -49,6 +50,7 @@ class NetConfig:
         self.label_amount = label_amount
         self.kernel_initializer = kernel_initializer
         self.bias_initializer = bias_initializer
+        self.split_classes = split_classes
 
 class FitConfig:
     def __init__(

@@ -5,8 +5,6 @@ import seaborn as sns
 import numpy as np
 import os
 
-from typing import Union
-
 import PIL
 from PIL import ImageOps
 
@@ -282,6 +280,43 @@ class TrainingUtils:
         img = tf.reshape(img, shape=(image_size[0], image_size[1], 3))
         img = tf.cast(img, dtype=tf.float32)
         return img
+
+    @staticmethod
+    @tf.function
+    def split_y(file_path, image_size=(512, 512)):
+        """Preprocessing routine that splits the mask in two separate ground truths (lumen and vessel)."""
+        img = tf.io.read_file(file_path)
+        img = tf.image.decode_png(img, channels=1)
+        img = tf.image.resize(img, size=image_size, method="nearest")
+        
+        img = tf.stack(
+            [
+                tf.cast(img == 100, dtype=tf.float32) * 1, 
+                tf.cast(img == 100, dtype=tf.float32) * 1 + tf.cast(img == 255, dtype=tf.float32) * 1
+                ], 
+                axis=0,
+            )
+
+        return img
+    
+    @staticmethod
+    @tf.function
+    def join_y(y):
+        """Postprocessing routine that joins previously split mask."""
+        
+        y_lumen, y_vessel = tf.unstack(y, axis=0)
+
+        y_lumen, y_vessel = tf.reshape(y_lumen, shape=y_lumen.shape), tf.reshape(y_vessel, shape=y_vessel.shape)
+
+        # outer equals not vessel
+        y_outer = (1 - y_vessel)
+        
+        # plaque equals vessel minus lumen
+        y_plaque = (y_vessel - y_lumen) 
+
+        y = tf.stack([y_outer, y_lumen, y_plaque], axis=2)
+
+        return y 
 
     @staticmethod
     def get_tf_dataset(

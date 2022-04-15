@@ -71,7 +71,11 @@ class Model:
 
         # x and y preprocessing
         self.__prep_x = TrainingUtils.prep_x
-        self.__prep_y = TrainingUtils.prep_y
+        
+        if self.setup.net_config.split_classes:
+            self.__prep_y = TrainingUtils.split_y
+        else:
+            self.__prep_y = TrainingUtils.prep_y
 
         # generators (tf.data)
         self.__trn_gen = None
@@ -367,6 +371,11 @@ class Model:
                 name = PlotUtils.pred_name(data, i, 0, name_format=name_format)
                 input_img_path = dataset.iloc[i + j]["raw_path"]
 
+                if self.setup.net_config.split_classes:
+                    p = TrainingUtils.join_y(w)
+                else:
+                    p = w
+
                 # check if ground truth is available
                 if "mask_path" in dataset.columns:
                     target_img_path = dataset.iloc[i + j]["mask_path"]
@@ -375,7 +384,7 @@ class Model:
 
                 PlotUtils.save_output(
                     name=name,
-                    pred=w,
+                    pred=p,
                     save_folder=save_folder,
                     input_img_path=input_img_path,
                     target_img_path=target_img_path,
@@ -547,15 +556,20 @@ class Model:
                 print(str(i + 1) + " / " + str(amount))
 
             pred = self.__model.predict(x)
-
+                
             for (j, w) in enumerate(pred):
                 name = PlotUtils.pred_name(ref_data, i, 0, name_format=[
                                            "iou_avg", "file_name"])
                 input_img_path = dataset.iloc[i + j]["raw_path"]
                 target_img_path = dataset.iloc[i + j]["mask_path"]
 
+                if self.setup.net_config.split_classes:
+                    p = TrainingUtils.join_y(w)
+                else:
+                    p = w
+
                 stats_list[i + j] = TrainingUtils.prediction_metrics(
-                    prediction=w, target_img_path=target_img_path)
+                    prediction=p, target_img_path=target_img_path)
 
                 # PlotUtils.save_output(
                 #     name=name,
