@@ -10,6 +10,7 @@ from PIL import ImageOps
 
 import matplotlib
 
+
 class DataUtils:
     """
     Low level data related utilities
@@ -162,10 +163,10 @@ class DataUtils:
 
     @staticmethod
     def format_table(
-            data: pd.DataFrame,
-            data_info: pd.DataFrame,
-            dataset,
-            sorting_metric="Average",
+        data: pd.DataFrame,
+        data_info: pd.DataFrame,
+        dataset,
+        sorting_metric="Average",
     ):
         """
         Formats data and data_info.
@@ -184,7 +185,9 @@ class DataUtils:
 
         for i in dataf.iteritems():
             dataf.loc[:, i[0]] = dataf[i[0]].map("{:.4f}".format)
-            data_infof.loc["mean":"max", i[0]] = data_infof.loc["mean":"max", i[0]].map("{:.4f}".format)
+            data_infof.loc["mean":"IQR", i[0]] = data_infof.loc["mean":"IQR", i[0]].map("{:.4f}".format)
+
+        data_infof.index = ['Count', "Mean", "Std", "IQR", "Min", "25%", "50%", "75%", "Max"]
 
         dataf = dataf.astype("str")
         data_infof = data_infof.astype("str")
@@ -288,35 +291,31 @@ class TrainingUtils:
         img = tf.io.read_file(file_path)
         img = tf.image.decode_png(img, channels=1)
         img = tf.image.resize(img, size=image_size, method="nearest")
-        
-        img = tf.stack(
-            [
-                tf.cast(img == 100, dtype=tf.float32) * 1, 
-                tf.cast(img == 100, dtype=tf.float32) * 1 + tf.cast(img == 255, dtype=tf.float32) * 1
-                ], 
-                axis=0,
-            )
 
-        return img
-    
+        lumen = tf.cast(img == 100, dtype=tf.float32) * 1
+        vessel = tf.cast(img == 100, dtype=tf.float32) * 1 + tf.cast(img == 255, dtype=tf.float32) * 1
+
+        return lumen, vessel
+
     @staticmethod
     @tf.function
-    def join_y(y):
+    def join_y(lumen, vessel):
         """Postprocessing routine that joins previously split mask."""
-        
-        y_lumen, y_vessel = tf.unstack(y, axis=0)
 
-        y_lumen, y_vessel = tf.reshape(y_lumen, shape=y_lumen.shape), tf.reshape(y_vessel, shape=y_vessel.shape)
+        # print(lumen.shape, vessel.shape)
+        # print(lumen.shape[1:-1])
+        lumen = tf.reshape(lumen, shape=lumen.shape[1:-1])
+        vessel = tf.reshape(vessel, shape=vessel.shape[1:-1])
 
         # outer equals not vessel
-        y_outer = (1 - y_vessel)
-        
+        outer = 1 - vessel
+
         # plaque equals vessel minus lumen
-        y_plaque = (y_vessel - y_lumen) 
+        plaque = vessel - lumen
 
-        y = tf.stack([y_outer, y_lumen, y_plaque], axis=2)
+        y = tf.stack([outer, lumen, plaque], axis=-1)
 
-        return y 
+        return y
 
     @staticmethod
     def get_tf_dataset(
@@ -523,15 +522,15 @@ class PlotUtils:
 
     @staticmethod
     def ratio_plots(
-            name,
-            gt_name,
-            ratio_name,
-            file_name,
-            data,
-            data_info,
-            plots_folder,
-            dpi=96,
-            ci=None,
+        name,
+        gt_name,
+        ratio_name,
+        file_name,
+        data,
+        data_info,
+        plots_folder,
+        dpi=96,
+        ci=None,
     ):
         """
         Save Ratio Plots
@@ -604,11 +603,11 @@ class PlotUtils:
 
     @staticmethod
     def save_plots(
-            data,
-            data_info,
-            save_folder,
-            dpi=400,
-            ci=None,
+        data,
+        data_info,
+        save_folder,
+        dpi=400,
+        ci=None,
     ):
         """
         Make plots.

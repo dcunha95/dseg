@@ -25,8 +25,15 @@ class Model:
         self.__analysed = False
 
         self.__history = None
-        self.__metrics = [tf.keras.metrics.MeanIoU(
-            num_classes=self.setup.net_config.label_amount)]
+
+        # metrics setup
+        if self.setup.net_config.multi_output:
+            self.__metrics = {
+                "lumen": [tf.keras.metrics.MeanIoU(num_classes=self.setup.net_config.label_amount)],
+                "vessel": [tf.keras.metrics.MeanIoU(num_classes=self.setup.net_config.label_amount)],
+            }
+        else:
+            self.__metrics = [tf.keras.metrics.MeanIoU(num_classes=self.setup.net_config.label_amount)]
 
         self.__analysis = None
 
@@ -36,12 +43,10 @@ class Model:
         if self.__setup.model_from_file is None:
 
             if self.__setup.net_config.model_type == "unet":
-                self.__model = NetBuilder.unet(
-                    net_config=self.setup.net_config)
+                self.__model = NetBuilder.unet(net_config=self.setup.net_config)
 
             if self.__setup.net_config.model_type == "unet++":
-                self.__model = NetBuilder.unet_pp(
-                    net_config=self.setup.net_config)
+                self.__model = NetBuilder.unet_pp(net_config=self.setup.net_config)
 
         # load existing model (net)
         else:
@@ -49,7 +54,7 @@ class Model:
                 self.setup.model_from_file,
                 custom_objects={"get_iou_loss": TrainingUtils.iou_loss},
             )
-            self.b_fitted = True
+            self.__fitted = True
 
         # setup callbacks
         self.__callbacks = [
@@ -66,13 +71,12 @@ class Model:
                 decay=self.setup.fit_config.lr_decay,
             )
 
-            self.__callbacks.append(
-                tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
+            self.__callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=0))
 
         # x and y preprocessing
         self.__prep_x = TrainingUtils.prep_x
-        
-        if self.setup.net_config.split_classes:
+
+        if self.setup.net_config.multi_output:
             self.__prep_y = TrainingUtils.split_y
         else:
             self.__prep_y = TrainingUtils.prep_y
@@ -185,8 +189,7 @@ class Model:
 
         ds = self.__trn_dataset, self.__val_dataset, self.__tst_dataset, self.__stt_dataset
 
-        min_batch_size = min(len(ds[0]), len(ds[1]), len(
-            ds[2]), len(ds[3]), self.setup.fit_config.batch_size)
+        min_batch_size = min(len(ds[0]), len(ds[1]), len(ds[2]), len(ds[3]), self.setup.fit_config.batch_size)
 
         if min_batch_size != self.setup.fit_config.batch_size:
             self.setup.fit_config.batch_size = min_batch_size
@@ -262,6 +265,12 @@ class Model:
         else:
             loss = fit_config.loss
 
+        if self.setup.net_config.multi_output:
+            loss = {
+                "lumen": loss,
+                "vessel": loss,
+            }
+
         self.__model.compile(
             optimizer=opt,
             loss=loss,
@@ -334,8 +343,7 @@ class Model:
 
         # if not already available, get name from raw_path:
         if "file_name" not in data.columns:
-            dataset["file_name"] = dataset.raw_path.str.split("\\").apply(
-                lambda x: x[-1]).str.split(".").apply(lambda x: x[0])
+            dataset["file_name"] = dataset.raw_path.str.split("\\").apply(lambda x: x[-1]).str.split(".").apply(lambda x: x[0])
 
         gen = TrainingUtils.get_tf_dataset(
             ds=dataset,
@@ -351,8 +359,7 @@ class Model:
 
         # print options: [raw, output, input, input_original, gt, gt_original]
         if simple_print:
-            print_options = [False, True, False, False,
-                             False, False]  # print only the output
+            print_options = [False, True, False, False, False, False]  # print only the output
             name_format = ["file_name"]
         else:
             print_options = [*print_options]  # default options set at setup
@@ -367,14 +374,16 @@ class Model:
 
             pred = self.__model.predict(x)
 
+            if self.setup.net_config.multi_output:
+                lumen, vessel = pred
+                pred = [TrainingUtils.join_y(lumen=lumen, vessel=vessel)]
+                # print(lumen.shape)
+                # print(vessel.shape)
+                # print(pred[0].shape)
+
             for (j, w) in enumerate(pred):
                 name = PlotUtils.pred_name(data, i, 0, name_format=name_format)
                 input_img_path = dataset.iloc[i + j]["raw_path"]
-
-                if self.setup.net_config.split_classes:
-                    p = TrainingUtils.join_y(w)
-                else:
-                    p = w
 
                 # check if ground truth is available
                 if "mask_path" in dataset.columns:
@@ -384,7 +393,7 @@ class Model:
 
                 PlotUtils.save_output(
                     name=name,
-                    pred=p,
+                    pred=w,
                     save_folder=save_folder,
                     input_img_path=input_img_path,
                     target_img_path=target_img_path,
@@ -400,8 +409,7 @@ class Model:
         }
 
         if state not in possible_states[self.setup.net_config.model_type]:
-            raise ValueError(
-                "Error updating trainable parameters: inappropriate state trying to be set.")
+            raise ValueError("Error updating trainable parameters: inappropriate state trying to be set.")
 
         for layer in self.__model.layers:
             layer.trainable = False
@@ -435,8 +443,7 @@ class Model:
         if state == "train_outer_net":
             for i in range(self.setup.net_config.depth):
                 name_left = "bm_" + str(i) + "_0"
-                name_right = "bm_" + str(i) + "_" + \
-                    str(self.setup.net_config.depth - i - 1)
+                name_right = "bm_" + str(i) + "_" + str(self.setup.net_config.depth - i - 1)
                 self.__model.get_layer(name=name_left).trainable = True
                 self.__model.get_layer(name=name_right).trainable = True
 
@@ -449,8 +456,7 @@ class Model:
         """
 
         if not self.__fitted or self.__history is None:
-            raise ValueError(
-                "Can't plot training, not yet fitted or training info not available.")
+            raise ValueError("Can't plot training, not yet fitted or training info not available.")
 
         if save_folder is None:
             save_folder = self.model_name
@@ -459,16 +465,31 @@ class Model:
 
         training["Loss"] = self.__history.history["loss"]
         training["Val. Loss"] = self.__history.history["val_loss"]
-        training["Mean IoU"] = self.__history.history["mean_io_u"]
-        training["Val. Mean IoU"] = self.__history.history["val_mean_io_u"]
+
+        if self.setup.net_config.multi_output:
+            training["Lumen Loss"] = self.__history.history["lumen_loss"]
+            training["Lumen Val. Loss"] = self.__history.history["val_lumen_loss"]
+
+            training["Vessel Loss"] = self.__history.history["vessel_loss"]
+            training["Vessel Val. Loss"] = self.__history.history["val_vessel_loss"]
+
+            training["Lumen Mean IoU"] = self.__history.history["lumen_mean_io_u"]
+            training["Lumen Val. Mean IoU"] = self.__history.history["val_lumen_mean_io_u"]
+
+            training["Vessel Mean IoU"] = self.__history.history["vessel_mean_io_u"]
+            training["Vessel Val. Mean IoU"] = self.__history.history["val_vessel_mean_io_u"]
+
+        else:
+            training["Mean IoU"] = self.__history.history["mean_io_u"]
+            training["Val. Mean IoU"] = self.__history.history["val_mean_io_u"]
+
 
         training["Epoch"] = np.arange(1, len(training) + 1)
         training.set_index("Epoch", inplace=True)
 
         sns.set_theme(style="ticks")
 
-        graph = sns.lineplot(data=training, palette="bright",
-                             markers=True, dashes=False)
+        graph = sns.lineplot(data=training, palette="bright", markers=True, dashes=False)
         graph.set(
             xlim=(1, len(training)),
             ylim=(0, 1),
@@ -532,8 +553,7 @@ class Model:
 
         # if not already available, get name from raw_path:
         if "file_name" not in ref_data.columns:
-            dataset["file_name"] = dataset.raw_path.str.split("\\").apply(
-                lambda x: x[-1]).str.split(".").apply(lambda x: x[0])
+            dataset["file_name"] = dataset.raw_path.str.split("\\").apply(lambda x: x[-1]).str.split(".").apply(lambda x: x[0])
 
         gen = TrainingUtils.get_tf_dataset(
             ds=dataset,
@@ -556,20 +576,20 @@ class Model:
                 print(str(i + 1) + " / " + str(amount))
 
             pred = self.__model.predict(x)
-                
+
+            if self.setup.net_config.multi_output:
+                lumen, vessel = pred
+                pred = [TrainingUtils.join_y(lumen=lumen, vessel=vessel)]
+                # print(lumen.shape)
+                # print(vessel.shape)
+                # print(pred[0].shape)
+
             for (j, w) in enumerate(pred):
-                name = PlotUtils.pred_name(ref_data, i, 0, name_format=[
-                                           "iou_avg", "file_name"])
+                name = PlotUtils.pred_name(ref_data, i, 0, name_format=["iou_avg", "file_name"])
                 input_img_path = dataset.iloc[i + j]["raw_path"]
                 target_img_path = dataset.iloc[i + j]["mask_path"]
 
-                if self.setup.net_config.split_classes:
-                    p = TrainingUtils.join_y(w)
-                else:
-                    p = w
-
-                stats_list[i + j] = TrainingUtils.prediction_metrics(
-                    prediction=p, target_img_path=target_img_path)
+                stats_list[i + j] = TrainingUtils.prediction_metrics(prediction=w, target_img_path=target_img_path)
 
                 # PlotUtils.save_output(
                 #     name=name,
@@ -598,27 +618,22 @@ class Model:
         )
 
         # More metrics
-        data["Lumen Area Ratio"] = data["Lumen Area [mm²]"] / \
-            data["Lumen Area GT [mm²]"]
-        data["Plaque Area Ratio"] = data["Plaque Area [mm²]"] / \
-            data["Plaque Area GT [mm²]"]
-        data["Vessel Area Ratio"] = data["Vessel Area [mm²]"] / \
-            data["Vessel Area GT [mm²]"]
+        data["Lumen Area Ratio"] = data["Lumen Area [mm²]"] / data["Lumen Area GT [mm²]"]
+        data["Plaque Area Ratio"] = data["Plaque Area [mm²]"] / data["Plaque Area GT [mm²]"]
+        data["Vessel Area Ratio"] = data["Vessel Area [mm²]"] / data["Vessel Area GT [mm²]"]
 
         # A single image has 100mm2
-        data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"] = 100 * \
-            data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"]
+        data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"] = 100 * data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"]
 
         # Even more
-        data["Plaque Burden"] = data["Plaque Area [mm²]"] / \
-            data["Vessel Area [mm²]"]
-        data["Plaque Burden GT"] = data["Plaque Area GT [mm²]"] / \
-            data["Vessel Area GT [mm²]"]
+        data["Plaque Burden"] = data["Plaque Area [mm²]"] / data["Vessel Area [mm²]"]
+        data["Plaque Burden GT"] = data["Plaque Area GT [mm²]"] / data["Vessel Area GT [mm²]"]
 
-        data["Plaque Burden Model/GT Ratio"] = data["Plaque Burden"] / \
-            data["Plaque Burden GT"]
+        data["Plaque Burden Model/GT Ratio"] = data["Plaque Burden"] / data["Plaque Burden GT"]
 
         data_info = data.describe()
+        data_info.loc["IQR"] = data_info.loc["75%"] - data_info.loc["25%"]
+        data_info = data_info.loc[['count', "mean", "std", "IQR", "min", "25%", "50%", "75%", "max"]]
 
         data_formatted, data_info_formatted, data_sorted = DataUtils.format_table(
             data=data,
@@ -638,7 +653,7 @@ class Model:
 
         PlotUtils.save_plots(
             data=self.analysis["data"],
-            data_info=self.analysis['data_info'],
+            data_info=self.analysis["data_info"],
             save_folder=self.model_name,
             dpi=400,
             ci=None,

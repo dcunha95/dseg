@@ -325,21 +325,21 @@ class NetBuilder:
             )(x)
             nodes[k].append(node)
 
-        if net_config.split_classes:
+        if net_config.multi_output:
             y_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same", activation="sigmoid")(nodes[0][-1])
             y_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same", activation="sigmoid")(nodes[0][-1])
-            
+
             if down_size is not None:
-                y_1=ly.UpSampling2D(down_size, interpolation="bilinear")(y_1)
-                y_2=ly.UpSampling2D(down_size, interpolation="bilinear")(y_2)
-            
+                y_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(y_1)
+                y_2 = ly.UpSampling2D(down_size, interpolation="bilinear")(y_2)
+
             outputs = ly.concatenate([y_1, y_2])
             outputs = ly.Reshape(target_shape=(2, input_shape[0], input_shape[1]))(outputs)
-        
+
         else:
-        
+
             outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
-            
+
             # upsize
             if down_size is not None:
                 # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
@@ -347,7 +347,6 @@ class NetBuilder:
                 # outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(outputs)
 
             outputs = ly.Activation("softmax", dtype="float32")(outputs)
-
 
         model = tf.keras.Model(inputs, outputs, name="unet_13")
         return model
@@ -433,25 +432,25 @@ class NetBuilder:
                 )(x)
                 nodes[i].append(node)
 
-        if net_config.split_classes:
-            y_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
-            y_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
-            
+        if net_config.multi_output:
+            x_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+            x_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+
             if down_size is not None:
-                y_1=ly.UpSampling2D(down_size, interpolation="bilinear")(y_1)
-                y_2=ly.UpSampling2D(down_size, interpolation="bilinear")(y_2)
+                x_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_1)
+                x_2 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_2)
 
-            y_1 = ly.Activation("sigmoid", name="lumen")(y_1)
-            y_2 = ly.Activation("sigmoid", name="vessel")(y_2)
+            lumen = ly.Activation("sigmoid", name="lumen")(x_1)
+            vessel = ly.Activation("sigmoid", name="vessel")(x_2)
 
-            outputs = ly.concatenate([y_1, y_2])
-            outputs = ly.Reshape(target_shape=(2, input_shape[0], input_shape[1]))(outputs)
-        
-        
+            outputs = [lumen, vessel]
+            # outputs = ly.concatenate([x_1, x_2])
+            # outputs = ly.Reshape(target_shape=(2, input_shape[0], input_shape[1]))(outputs)
+
         else:
-        
+
             outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
-            
+
             # upsize
             if down_size is not None:
                 # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
@@ -462,6 +461,3 @@ class NetBuilder:
 
         model = tf.keras.Model(inputs, outputs, name="unet_pp_13")
         return model
-
-
-
