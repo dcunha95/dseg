@@ -441,8 +441,8 @@ class NetBuilder:
                 y_1=ly.UpSampling2D(down_size, interpolation="bilinear")(y_1)
                 y_2=ly.UpSampling2D(down_size, interpolation="bilinear")(y_2)
 
-            # y_1 = ly.Activation("sigmoid", name="lumen")(y_1)
-            # y_2 = ly.Activation("sigmoid", name="vessel")(y_2)
+            y_1 = ly.Activation("sigmoid", name="lumen")(y_1)
+            y_2 = ly.Activation("sigmoid", name="vessel")(y_2)
 
             outputs = ly.concatenate([y_1, y_2])
             outputs = ly.Reshape(target_shape=(2, input_shape[0], input_shape[1]))(outputs)
