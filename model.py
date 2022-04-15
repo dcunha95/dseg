@@ -374,6 +374,9 @@ class Model:
 
             pred = self.__model.predict(x)
 
+            if i < 1:
+                print("shape: ", np.array(pred).shape)
+
             if self.setup.net_config.multi_output:
                 lumen, vessel = pred
                 pred = [TrainingUtils.join_y(lumen=lumen, vessel=vessel)]

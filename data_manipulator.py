@@ -185,7 +185,7 @@ class DataUtils:
 
         for i in dataf.iteritems():
             dataf.loc[:, i[0]] = dataf[i[0]].map("{:.4f}".format)
-            data_infof.loc["mean":"IQR", i[0]] = data_infof.loc["mean":"IQR", i[0]].map("{:.4f}".format)
+            data_infof.loc["mean":"max", i[0]] = data_infof.loc["mean":"max", i[0]].map("{:.4f}".format)
 
         data_infof.index = ['Count', "Mean", "Std", "IQR", "Min", "25%", "50%", "75%", "Max"]
 
