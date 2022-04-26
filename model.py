@@ -54,7 +54,7 @@ class Model:
         else:
             self.__model = tf.keras.models.load_model(
                 self.setup.model_from_file,
-                custom_objects={"get_iou_loss": TrainingUtils.iou_loss},
+                custom_objects={"iou_loss": TrainingUtils.iou_loss},
             )
             self.__fitted = True
 
