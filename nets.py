@@ -326,15 +326,17 @@ class NetBuilder:
             nodes[k].append(node)
 
         if net_config.multi_output:
-            y_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same", activation="sigmoid")(nodes[0][-1])
-            y_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same", activation="sigmoid")(nodes[0][-1])
+            x_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+            x_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
 
             if down_size is not None:
-                y_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(y_1)
-                y_2 = ly.UpSampling2D(down_size, interpolation="bilinear")(y_2)
+                x_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_1)
+                x_2 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_2)
 
-            outputs = ly.concatenate([y_1, y_2])
-            outputs = ly.Reshape(target_shape=(2, input_shape[0], input_shape[1]))(outputs)
+            lumen = ly.Activation("sigmoid", name="lumen", dtype="float32")(x_1)
+            vessel = ly.Activation("sigmoid", name="vessel", dtype="float32")(x_2)
+
+            outputs = [lumen, vessel]
 
         else:
 
@@ -440,8 +442,8 @@ class NetBuilder:
                 x_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_1)
                 x_2 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_2)
 
-            lumen = ly.Activation("sigmoid", name="lumen")(x_1)
-            vessel = ly.Activation("sigmoid", name="vessel")(x_2)
+            lumen = ly.Activation("sigmoid", name="lumen", dtype="float32")(x_1)
+            vessel = ly.Activation("sigmoid", name="vessel", dtype="float32")(x_2)
 
             outputs = [lumen, vessel]
             # outputs = ly.concatenate([x_1, x_2])

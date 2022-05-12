@@ -285,6 +285,13 @@ class Model:
             loss_weights=loss_weights,
         )
 
+    def summary(self, expand_nested=False):
+        """Prints neural network structure"""
+
+        if self.__model is not None:
+            self.__model.summary(expand_nested=expand_nested)
+
+
     def fit(self, fit_config=None):
         """Train the model with the train dataset partition"""
 
