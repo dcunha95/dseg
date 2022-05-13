@@ -251,7 +251,7 @@ class TrainingUtils:
 
     @staticmethod
     def dice(y_pred, y_true) -> float:
-        """Returns DICE (Sørensen–Dice Index)"""
+        """Returns DICE (Sørensen-Dice Index)"""
         inter = np.count_nonzero(np.logical_and(y_pred, y_true).astype("uint8"))
         x = np.count_nonzero(y_pred.astype("uint8"))
         y = np.count_nonzero(y_true.astype("uint8"))
