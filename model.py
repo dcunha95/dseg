@@ -510,7 +510,7 @@ class Model:
             training["Val. Mean IoU"] = self.__history.history["val_mean_io_u"]
 
             plots = [
-                ("training_results.png", [["Loss", "Val. Loss", "Mean IoU", "Val. Mean IoU"]]),
+                ("training_results.png", ["Loss", "Val. Loss", "Mean IoU", "Val. Mean IoU"]),
             ]
 
         training["Epoch"] = np.arange(1, len(training) + 1)
