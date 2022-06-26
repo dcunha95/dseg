@@ -349,3 +349,282 @@ class Extractor:
         source = os.path.join(os.path.split(input_path)[0], "training_results.png")
         destination = os.path.join(target_path, "training_results.png")
         shutil.copy(source, destination)
+
+
+class Comparison:
+
+    @staticmethod
+    def _get_specs(specs_path):
+        specs = pd.read_csv(
+            specs_path,
+            index_col=0,
+            na_values="--",
+            dtype=object,
+        )
+        specs["Base ID"] = specs["Base ID"].fillna("None")
+        specs["Multi-GPU"] = specs["Multi-GPU"].fillna(False).replace("X", True)
+        specs["Multi-Output"] = specs["Multi-Output"].fillna(False).replace("X", True)
+        specs["Mixed Precision"] = specs["Mixed Precision"].fillna(False).replace("X", True)
+        specs["Downsizing"] = specs["Downsizing"].fillna("None")
+        specs["Notes"] = specs["Notes"].fillna("")
+
+        return specs
+
+    @staticmethod
+    def _get_results(results_path):
+    
+        names = pd.MultiIndex.from_product([["Mean", "Median", "IQR"], ["Average IoU", "Lumen IoU", "Plaque IoU", "Vessel IoU"]])
+    
+        results = pd.read_csv(
+            results_path,
+            header=None,
+            index_col=0,
+            names=names,
+            skiprows=2,
+            dtype=float,
+        )
+        results.index.name = "ID"
+    
+        return results
+    
+    
+    @staticmethod
+    def _fix_dtypes(specs):
+        specs = specs.copy()
+        to_str = ["Status", "Net", "Loss", "Optimizer", "Notes", "Downsizing", "Base ID"]
+        to_int = ["Epochs", "Depth", "Node Structure", "Base Filters", "Kernel Size", "Batch Size"]
+        to_bool = ["Multi-GPU", "Multi-Output", "Mixed Precision"]
+        to_float = ["Learning Rate", "Median Avg. IoU", "IQR Avg. IoU"]
+    
+        specs[to_str] = specs[to_str].astype(str)
+        specs[to_float] = specs[to_float].astype(float)
+        specs[to_bool] = specs[to_bool].astype(bool)
+        specs[to_int] = specs[to_int].astype(int)
+    
+        return specs
+    
+    
+    @staticmethod
+    def _flat_cols(results):
+        results = results.copy()
+        new_cols = list(map(lambda x: str(x[0] + " " + x[1]), results.columns.to_flat_index()))
+        results.columns = new_cols
+        return results
+    
+    
+    @staticmethod
+    def _make_master(specs, results):
+
+        specs = specs.copy()
+        results = results.copy()
+    
+        specs.drop(columns=["Median Avg. IoU", "IQR Avg. IoU"], inplace=True)
+        master_table = pd.concat([specs, results], axis=1)
+        master_table.index = master_table.index.astype(int)
+    
+        return master_table
+
+    @staticmethod
+    def get_master(specs_path, results_path):
+
+        specs = Comparison._get_specs(specs_path)
+        results = Comparison._get_results(results_path)
+
+        specs = Comparison._fix_dtypes(specs)
+        results = Comparison._flat_cols(results)
+
+        master_table = Comparison._make_master(specs, results)
+
+        return master_table
+
+    @staticmethod
+    def get_grid(specs_path):
+
+        specs = Comparison._get_specs(specs_path)
+        specs = Comparison._fix_dtypes(specs)
+        specs = specs.drop(columns=["Status", "Notes", "Median Avg. IoU", "IQR Avg. IoU"])
+    
+        grid = {k: list(v.unique()) for (k, v) in specs.iteritems()}
+    
+        for k in grid:
+            grid[k].sort()
+    
+        return grid
+
+    @staticmethod
+    def _get_param_comps(comp_param, master_table, grid, only_completed=True):
+        """Returns dictionary of DataFrames containing the comparisons for desired parameters at different states"""
+
+        if only_completed:
+            table = master_table.loc[pd.notna(master_table["Mean Average IoU"])].copy()
+        else:
+            table = master_table.copy()
+    
+        m_grid = {k: grid[k] for k in grid if k not in comp_param}
+        test_consts = [k for k in m_grid]
+    
+        # fix this
+        # vals = [m_grid[k] for k in m_grid]
+        # raw_combs = itertools.product(*vals)
+        # combs = list(raw_combs)
+        # combs_amount = len(combs)
+        # print('\r',num*100//combs_amount , 'percent done. Searching for combination', i)
+    
+        combs = []
+        for (i, j) in table[test_consts].iterrows():
+            t = tuple(j)
+            if t not in combs:
+                combs.append(tuple(j))
+    
+        combs_dict = {}
+        for (num, i) in enumerate(combs):
+    
+            tests = table.loc[(master_table[test_consts] == i).all(1)]
+    
+            if len(tests) > 1:
+                print("found!")
+                combs_dict[i] = tests.T.copy()
+    
+        return combs_dict
+
+    @staticmethod
+    def comp_for_specs(specs, grid, master_table, ignore={}):
+        """Get comparisons for desired parameters, optionally ignoring some."""
+
+        spec_dict = {}
+        comp_summary = {}
+    
+        n = 1
+        for spec in specs:
+    
+            if isinstance(spec, str):
+                spec_set = {spec}
+                spec_key = (spec,)
+            else:
+                spec_set = spec
+                spec_key = list(spec)
+                spec_key.sort()
+                spec_key = tuple(spec_key)
+    
+            print("Searching for comparisons for", spec)
+            combs_dict = Comparison._get_param_comps(spec_set | ignore, master_table, grid, only_completed=True)
+    
+            for i in combs_dict:
+                comp_summary[n] = [spec, tuple(combs_dict[i].columns.to_list()), i]
+                n += 1
+                print("Combination", i)
+                print("\n", combs_dict[i])
+    
+            print(len(combs_dict), "combinations found")
+    
+            spec_dict[spec_key] = combs_dict
+    
+        comp_summary = pd.DataFrame.from_dict(comp_summary, orient="index", columns=["Studied Param.", "IDs", "Constant Specifications"])
+    
+        return spec_dict, comp_summary
+
+    @staticmethod
+    def make_tables(spec_dict, base_target_path):
+    
+        suggestions_path = os.path.join(base_target_path, "suggested_comps")
+        if not os.path.exists(suggestions_path):
+            os.makedirs(suggestions_path)
+    
+        row_specs = [
+            "Epochs",
+            "Net",
+            "Depth",
+            "Node Structure",
+            "Learning Rate",
+            "Loss",
+            "Optimizer",
+            "Base Filters",
+            "Kernel Size",
+            "Batch Size",
+            "Base ID",
+            "Multi-Output",
+            "Downsizing",
+        ]
+    
+        row_results = [
+            "Mean Average IoU",
+            "Mean Lumen IoU",
+            "Mean Plaque IoU",
+            "Mean Vessel IoU",
+            "Median Average IoU",
+            "Median Lumen IoU",
+            "Median Plaque IoU",
+            "Median Vessel IoU",
+            "IQR Average IoU",
+            "IQR Lumen IoU",
+            "IQR Plaque IoU",
+            "IQR Vessel IoU",
+        ]
+    
+        complete = [
+            "Status",
+            "Epochs",
+            "Net",
+            "Depth",
+            "Node Structure",
+            "Learning Rate",
+            "Loss",
+            "Optimizer",
+            "Base Filters",
+            "Kernel Size",
+            "Batch Size",
+            "Base ID",
+            "Multi-GPU",
+            "Multi-Output",
+            "Downsizing",
+            "Notes",
+            "Mean Average IoU",
+            "Mean Lumen IoU",
+            "Mean Plaque IoU",
+            "Mean Vessel IoU",
+            "Median Average IoU",
+            "Median Lumen IoU",
+            "Median Plaque IoU",
+            "Median Vessel IoU",
+            "IQR Average IoU",
+            "IQR Lumen IoU",
+            "IQR Plaque IoU",
+            "IQR Vessel IoU",
+        ]
+    
+        n = 1
+        for k in spec_dict:
+            combs_dict = spec_dict[k]
+    
+            comps_name = list(k)
+            comps_name.sort()
+            comps_name = tuple(comps_name)
+    
+            for i in combs_dict:
+    
+                # if False:
+                #     c_list = list(map(lambda x: str(x) + "--", comps_name + i))
+                #
+                #     name = ""
+                #     for c in c_list:
+                #         name += c
+                #
+                #     name = name.lower()
+                #     name = name.replace(" ", "")
+                #     name = name.replace("0.", "")
+                #     name = name[:-2]
+                # else:
+                #     name = str(n)
+    
+                name = str(n)
+    
+                print("saving to", name + ".csv/tex")
+    
+                combs_dict[i].to_csv(os.path.join(suggestions_path, name) + ".csv")
+                combs_dict[i].loc[row_specs].to_latex(os.path.join(suggestions_path, name) + "--specs.tex")
+                combs_dict[i].loc[row_results].to_latex(os.path.join(suggestions_path, name) + "--res.tex")
+                combs_dict[i].to_latex(os.path.join(suggestions_path, name) + ".tex")
+    
+                n += 1
+    
+        print("done!")
