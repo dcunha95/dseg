@@ -495,6 +495,8 @@ class Comparison:
         comp_summary = {}
     
         n = 1
+        specs = list(specs)
+        specs.sort()
         for spec in specs:
     
             if isinstance(spec, str):
@@ -508,7 +510,12 @@ class Comparison:
     
             print("Searching for comparisons for", spec)
             combs_dict = Comparison._get_param_comps(spec_set | ignore, master_table, grid, only_completed=True)
-    
+
+            # print("combs_dict:")
+            # for i in combs_dict:
+            #     print(i, combs_dict[i], sep="\n")
+        
+
             for i in combs_dict:
                 comp_summary[n] = [spec, tuple(combs_dict[i].columns.to_list()), i]
                 n += 1
@@ -518,15 +525,19 @@ class Comparison:
             print(len(combs_dict), "combinations found")
     
             spec_dict[spec_key] = combs_dict
-    
+
+        print("comp summary: ")
+        for i in comp_summary:
+            print(i, comp_summary[i])
+            
         comp_summary = pd.DataFrame.from_dict(comp_summary, orient="index", columns=["Studied Param.", "IDs", "Constant Specifications"])
     
         return spec_dict, comp_summary
 
     @staticmethod
-    def make_tables(spec_dict, base_target_path):
+    def make_tables(spec_dict, suggestions_path):
     
-        suggestions_path = os.path.join(base_target_path, "suggested_comps")
+        # suggestions_path = os.path.join(base_target_path, "suggested_comps")
         if not os.path.exists(suggestions_path):
             os.makedirs(suggestions_path)
     
@@ -619,11 +630,16 @@ class Comparison:
                 name = str(n)
     
                 print("saving to", name + ".csv/tex")
-    
-                combs_dict[i].to_csv(os.path.join(suggestions_path, name) + ".csv")
-                combs_dict[i].loc[row_specs].to_latex(os.path.join(suggestions_path, name) + "--specs.tex")
-                combs_dict[i].loc[row_results].to_latex(os.path.join(suggestions_path, name) + "--res.tex")
-                combs_dict[i].to_latex(os.path.join(suggestions_path, name) + ".tex")
+
+                comp_path = os.path.join(suggestions_path, "comp"+name)
+                
+                if not os.path.exists(comp_path):
+                    os.makedirs(comp_path)
+
+                combs_dict[i].to_csv(os.path.join(comp_path, "all.csv"))
+                combs_dict[i].loc[row_specs].to_latex(os.path.join(comp_path, "specs.tex"))
+                combs_dict[i].loc[row_results].to_latex(os.path.join(comp_path, "res.tex"))
+                combs_dict[i].to_latex(os.path.join(comp_path, "all.tex"))
     
                 n += 1
     
