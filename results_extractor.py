@@ -6,6 +6,8 @@ import itertools
 import pandas as pd
 import seaborn as sns
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 
 
 class Extractor:
@@ -529,7 +531,7 @@ class Comparison:
         print("comp summary: ")
         for i in comp_summary:
             print(i, comp_summary[i])
-            
+
         comp_summary = pd.DataFrame.from_dict(comp_summary, orient="index", columns=["Studied Param.", "IDs", "Constant Specifications"])
     
         return spec_dict, comp_summary
@@ -644,3 +646,92 @@ class Comparison:
                 n += 1
     
         print("done!")
+
+
+class Plotter:
+
+    @staticmethod
+    def _retrieve_tables_path(id_list, base_path):
+        """Retrieves latest training analysis csv for each training"""
+
+        dic = {}
+        for i in id_list:
+
+            # get correct dir
+            dir_name = str(i)
+            while len(dir_name) < 3:
+                dir_name = "0" + dir_name
+            dir_name = "id_" + dir_name
+
+            dic[i] = os.path.join(Extractor.id_last_training_results_path(os.path.join(base_path, dir_name)), "analysis.csv")
+            
+        return dic
+
+    @staticmethod
+    def _load_analysis_table(analysis_paths):
+        dic = {id: pd.read_csv(analysis_paths[id], index_col=[0]) for id in analysis_paths}
+        return dic
+
+    @staticmethod
+    def _make_comp_df(analysis_tables):
+        """Constructs a comparison DataFrame in the appropriate format for plotting comparison plots"""
+
+        analysis_tables = {str(id): analysis_tables[id].copy() for id in analysis_tables}
+
+        for id in analysis_tables:
+            analysis_tables[id]["ID"] = [id for n in range(len(analysis_tables[id]))]
+
+        df = pd.concat([analysis_tables[id] for id in analysis_tables])
+
+        df = df[["Average", "Lumen", "Plaque", "Vessel", "ID"]]
+
+        # graph = sns.violinplot(data=df, )
+
+        df2 = pd.DataFrame()
+        for j in ["Average", "Lumen", "Plaque", "Vessel"]:
+            df_aux = df[[j, "ID"]].copy()
+            df_aux.columns = ["IoU", "ID"]
+            df_aux["Class"] = [j for n in range(len(df_aux))]
+
+            df2 = pd.concat([df2, df_aux])
+
+        df2 = df2.copy()
+
+        return df2
+
+    @staticmethod
+    def violin(id_list, base_path):
+
+        analysis_paths = Plotter._retrieve_tables_path(id_list, base_path)
+        analysis_tables = Plotter._load_analysis_table(analysis_paths)
+        df = Plotter._make_comp_df(analysis_tables)
+
+        plt.figure()
+        
+        if len(id_list) == 2:
+            graph = sns.violinplot(data=df, x="Class", y="IoU", hue="ID", split=True)
+        else:
+            graph = sns.violinplot(data=df, x="Class", y="IoU", hue="ID")
+
+        return graph
+
+    @staticmethod
+    def all_comps(comp_summary, base_path, suggestions_path):
+        
+        for (i, j) in comp_summary.iterrows():
+
+            comp_path = os.path.join(suggestions_path, "comp"+str(i))
+            if not os.path.exists(comp_path):
+                os.makedirs(comp_path)
+
+            id_list = j["IDs"]
+
+            print(f"drawing plot for {id_list}")
+            graph = Plotter.violin(id_list, base_path)
+            graph.get_figure().savefig(os.path.join(comp_path, "violin.png"), format="png", dpi=400)
+            plt.close()
+            print(f"saving to {comp_path}")
+
+        print("done!")
+
+        return
