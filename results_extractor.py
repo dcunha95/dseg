@@ -355,6 +355,69 @@ class Extractor:
 
 class Comparison:
 
+    #class variables
+    row_specs = [
+            "Epochs",
+            "Net",
+            "Depth",
+            "Node Structure",
+            "Learning Rate",
+            "Loss",
+            "Optimizer",
+            "Base Filters",
+            "Kernel Size",
+            "Batch Size",
+            "Base ID",
+            "Multi-Output",
+            "Downsizing",
+        ]
+    
+    row_results = [
+        "Mean Average IoU",
+        "Mean Lumen IoU",
+        "Mean Plaque IoU",
+        "Mean Vessel IoU",
+        "Median Average IoU",
+        "Median Lumen IoU",
+        "Median Plaque IoU",
+        "Median Vessel IoU",
+        "IQR Average IoU",
+        "IQR Lumen IoU",
+        "IQR Plaque IoU",
+        "IQR Vessel IoU",
+    ]
+
+    complete = [
+        "Status",
+        "Epochs",
+        "Net",
+        "Depth",
+        "Node Structure",
+        "Learning Rate",
+        "Loss",
+        "Optimizer",
+        "Base Filters",
+        "Kernel Size",
+        "Batch Size",
+        "Base ID",
+        "Multi-GPU",
+        "Multi-Output",
+        "Downsizing",
+        "Notes",
+        "Mean Average IoU",
+        "Mean Lumen IoU",
+        "Mean Plaque IoU",
+        "Mean Vessel IoU",
+        "Median Average IoU",
+        "Median Lumen IoU",
+        "Median Plaque IoU",
+        "Median Vessel IoU",
+        "IQR Average IoU",
+        "IQR Lumen IoU",
+        "IQR Plaque IoU",
+        "IQR Vessel IoU",
+    ]
+
     @staticmethod
     def _get_specs(specs_path):
         specs = pd.read_csv(
@@ -537,73 +600,26 @@ class Comparison:
         return spec_dict, comp_summary
 
     @staticmethod
-    def make_tables(spec_dict, suggestions_path):
+    def make_tables(id_list, master_table, comp_path):
+        
+        if not os.path.exists(comp_path):
+            os.makedirs(comp_path)
+
+        table = master_table.loc[id_list].T.copy()
+
+        table.to_csv(os.path.join(comp_path, "all.csv"))
+        table.loc[Comparison.row_specs].to_latex(os.path.join(comp_path, "specs.tex"))
+        table.loc[Comparison.row_results].to_latex(os.path.join(comp_path, "res.tex"))
+        table.to_latex(os.path.join(comp_path, "all.tex"))
+
+        return table
+
+    @staticmethod
+    def make_auto_comp_tables(spec_dict, suggestions_path):
     
         # suggestions_path = os.path.join(base_target_path, "suggested_comps")
         if not os.path.exists(suggestions_path):
             os.makedirs(suggestions_path)
-    
-        row_specs = [
-            "Epochs",
-            "Net",
-            "Depth",
-            "Node Structure",
-            "Learning Rate",
-            "Loss",
-            "Optimizer",
-            "Base Filters",
-            "Kernel Size",
-            "Batch Size",
-            "Base ID",
-            "Multi-Output",
-            "Downsizing",
-        ]
-    
-        row_results = [
-            "Mean Average IoU",
-            "Mean Lumen IoU",
-            "Mean Plaque IoU",
-            "Mean Vessel IoU",
-            "Median Average IoU",
-            "Median Lumen IoU",
-            "Median Plaque IoU",
-            "Median Vessel IoU",
-            "IQR Average IoU",
-            "IQR Lumen IoU",
-            "IQR Plaque IoU",
-            "IQR Vessel IoU",
-        ]
-    
-        complete = [
-            "Status",
-            "Epochs",
-            "Net",
-            "Depth",
-            "Node Structure",
-            "Learning Rate",
-            "Loss",
-            "Optimizer",
-            "Base Filters",
-            "Kernel Size",
-            "Batch Size",
-            "Base ID",
-            "Multi-GPU",
-            "Multi-Output",
-            "Downsizing",
-            "Notes",
-            "Mean Average IoU",
-            "Mean Lumen IoU",
-            "Mean Plaque IoU",
-            "Mean Vessel IoU",
-            "Median Average IoU",
-            "Median Lumen IoU",
-            "Median Plaque IoU",
-            "Median Vessel IoU",
-            "IQR Average IoU",
-            "IQR Lumen IoU",
-            "IQR Plaque IoU",
-            "IQR Vessel IoU",
-        ]
     
         n = 1
         for k in spec_dict:
@@ -631,18 +647,17 @@ class Comparison:
     
                 name = str(n)
     
-                print("saving to", name + ".csv/tex")
-
                 comp_path = os.path.join(suggestions_path, "comp"+name)
-                
+                print("saving to", comp_path)
+
                 if not os.path.exists(comp_path):
                     os.makedirs(comp_path)
 
                 combs_dict[i].to_csv(os.path.join(comp_path, "all.csv"))
-                combs_dict[i].loc[row_specs].to_latex(os.path.join(comp_path, "specs.tex"))
-                combs_dict[i].loc[row_results].to_latex(os.path.join(comp_path, "res.tex"))
+                combs_dict[i].loc[Comparison.row_specs].to_latex(os.path.join(comp_path, "specs.tex"))
+                combs_dict[i].loc[Comparison.row_results].to_latex(os.path.join(comp_path, "res.tex"))
                 combs_dict[i].to_latex(os.path.join(comp_path, "all.tex"))
-    
+                
                 n += 1
     
         print("done!")
