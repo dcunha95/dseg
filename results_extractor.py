@@ -750,3 +750,37 @@ class Plotter:
         print("done!")
 
         return
+
+    @staticmethod
+    def master_table_plot(master_table):
+
+        table = master_table[["Median Average IoU", "IQR Average IoU"]].loc[pd.notna(master_table["Mean Average IoU"])]
+        table.sort_values(by="Median Average IoU", inplace=True)
+        # table["ID"] = [str(i) for i in table.index]
+        table["ID"] = [i for i in table.index]
+
+
+        df = table
+        df2 = pd.DataFrame()
+        for j in ["Median Average IoU", "IQR Average IoU"]:
+            df_aux = df[[j, "ID"]].copy()
+            df_aux.columns = ["IoU", "ID"]
+            df_aux["Metric"] = [j for n in range(len(df_aux))]
+
+            df2 = pd.concat([df2, df_aux])
+
+        df2.index = [i for i in range(len(df2))]
+        df2 = df2.copy()
+
+        print(df2)
+        plt.figure()
+        graph = sns.barplot(data=df2, x="ID", y="IoU", hue="Metric", order=table.index)
+        graph.set(ylim=(0, 1.03))
+        # graph.set_aspect(9/16)
+
+        graph.tick_params(axis="x", which="major", labelsize=7, rotation=45)
+        graph.tick_params(axis="y", which="major", labelsize=8, rotation=0)
+
+
+
+        return
