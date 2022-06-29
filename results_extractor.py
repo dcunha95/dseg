@@ -517,6 +517,25 @@ class Comparison:
         return grid
 
     @staticmethod
+    def make_grid_df(grid):
+        """Returns a DataFrame showing the considered parameters."""
+
+        grid_dict = {k: [str(grid[k])[1:-1].replace("'", "")] for k in grid}
+
+        remove = ["Base ID", "Multi-GPU"]
+
+        for k in remove:
+            if k in grid_dict:
+                grid_dict.pop(k)
+
+        grid_df = pd.DataFrame.from_dict(grid_dict, orient='index')
+        grid_df.columns = ["Considered Values"]
+        grid_df.index.name = "Parameter"
+
+        return grid_df
+
+
+    @staticmethod
     def _get_param_comps(comp_param, master_table, grid, only_completed=True):
         """Returns dictionary of DataFrames containing the comparisons for desired parameters at different states"""
 
