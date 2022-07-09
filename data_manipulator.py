@@ -128,6 +128,42 @@ class DataUtils:
         return files
 
     @staticmethod
+    def process_dataset(dataset: pd.DataFrame) -> pd.DataFrame:
+        """Adds more columns to dataset."""
+
+        get_artery_info = lambda x: ''.join([i+'_' for i in x.split('_')[:-1]])[:-1]
+        get_frame_number = lambda x: int(x.split('_')[-1])
+
+        dataset["artery_info"] = [get_artery_info(j) for (i,j) in dataset.file_name.iteritems()]
+        dataset["frame_number"] = [get_frame_number(j) for (i,j) in dataset.file_name.iteritems()]
+            
+        return dataset
+
+    @staticmethod
+    def prune_dataset(ds, channels, strides) -> pd.DataFrame:
+        """Prepares a dataset for use with multichannels."""
+
+        border = int(strides*(channels-1)/2)
+
+        # get processed data
+        arteries = ds.artery_info.unique()
+
+        # prune artery borders
+        df = pd.DataFrame()
+        for artery_i in arteries:
+            df_i = ds.loc[ds.artery_info == artery_i].iloc[border:-border]
+            df = pd.concat([df, df_i])
+
+        return df.copy()
+
+    @staticmethod
+    def get_available_from_dataset(dataset, available_dataset):
+
+        df = dataset.loc[[j in available_dataset.file_name for (i,j) in dataset.file_name.iteritems()]]
+
+        return df.copy()
+
+    @staticmethod
     def get_dataset_percent(files: pd.DataFrame, percent: float = 1.0, random: bool = False, seed: int = 1337) -> pd.DataFrame:
         """Retrieves fraction of dataset"""
 
