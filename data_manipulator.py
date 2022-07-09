@@ -81,7 +81,6 @@ class DataUtils:
         Loads a .csv dataset reference file.
 
         :param file_path:
-        :param seed:
         :return:
         """
 
@@ -154,12 +153,16 @@ class DataUtils:
             df_i = ds.loc[ds.artery_info == artery_i].iloc[border:-border]
             df = pd.concat([df, df_i])
 
+        df.reset_index(drop=True, inplace=True)
+
         return df.copy()
 
     @staticmethod
-    def get_available_from_dataset(dataset, available_dataset):
+    def get_available_from_dataset(dataset, available_dataset) -> pd.DataFrame:
+        """Returns items from dataset found in available_dataset."""
 
-        df = dataset.loc[[j in available_dataset.file_name for (i,j) in dataset.file_name.iteritems()]]
+        df = dataset.loc[[j in available_dataset.file_name for (i,j) in dataset.file_name.iteritems()]].copy()
+        df.reset_index(drop=True, inplace=True)
 
         return df.copy()
 
