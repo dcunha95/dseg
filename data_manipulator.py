@@ -178,6 +178,15 @@ class DataUtils:
         return files
 
     @staticmethod
+    def get_multichannels(file_path: str):
+        """Return list of files for 2.5D training."""
+
+        
+
+
+        return
+
+    @staticmethod
     def update_model_name(model_name: str) -> str:
         """
         Check if model_name already exists, updates it accordingly, and finally creates folder with updated model_name.
@@ -334,6 +343,14 @@ class TrainingUtils:
         img = tf.image.convert_image_dtype(img, tf.float32)
         img = tf.image.resize(img, size=image_size)
         return img
+
+    @staticmethod
+    def multi_x(file_path, image_size=(512, 512)):
+        """Loading multichannel routines."""
+
+        files_list = DataUtils
+
+        return
 
     @staticmethod
     @tf.function
