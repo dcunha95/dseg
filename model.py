@@ -79,6 +79,19 @@ class Model:
             self.__callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=0))
 
         # x and y preprocessing
+        if self.setup.net_config.channels == 1:
+            self.__prep_x = TrainingUtils.prep_x
+
+        else:
+            
+            self.__prep_x = lambda file_path, image_size: TrainingUtils.multi_x(
+                file_path=file_path, 
+                channels=self.setup.net_config.channels, 
+                strides=self.setup.net_config.channel_strides,
+                image_size=image_size,
+            )
+            
+
         self.__prep_x = TrainingUtils.prep_x
 
         if self.setup.net_config.multi_output:

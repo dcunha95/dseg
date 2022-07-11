@@ -33,6 +33,8 @@ class NetConfig:
         kernel_initializer="glorot_uniform",
         bias_initializer="zeros",
         multi_output=False,
+        channels = 1,
+        channel_strides = 1,
     ):
         # Net related:
         self.model_type = model_type
@@ -42,7 +44,7 @@ class NetConfig:
         self.node_type = node_type
         self.image_size = image_size
         self.down_size = down_size
-        self.input_shape = self.image_size + (1,)
+        self.input_shape = self.image_size + (channels,)
         self.base_filters = base_filters
         self.kernel_size = kernel_size
         self.dropout_amount = dropout_amount
@@ -51,6 +53,8 @@ class NetConfig:
         self.kernel_initializer = kernel_initializer
         self.bias_initializer = bias_initializer
         self.multi_output = multi_output
+        self.channels = channels
+        self.channel_strides = channel_strides
 
 class FitConfig:
     def __init__(
