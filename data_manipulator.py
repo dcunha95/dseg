@@ -136,7 +136,7 @@ class DataUtils:
         dataset["artery_info"] = [get_artery_info(j) for (i,j) in dataset.file_name.iteritems()]
         dataset["frame_number"] = [get_frame_number(j) for (i,j) in dataset.file_name.iteritems()]
             
-        return dataset
+        return dataset.copy()
 
     @staticmethod
     def prune_dataset(ds, channels, strides) -> pd.DataFrame:
@@ -161,7 +161,7 @@ class DataUtils:
     def get_available_from_dataset(dataset, available_dataset) -> pd.DataFrame:
         """Returns items from dataset found in available_dataset."""
 
-        df = dataset.loc[[j in available_dataset.file_name for (i,j) in dataset.file_name.iteritems()]].copy()
+        df = dataset.loc[[j in available_dataset.file_name.to_list() for (i,j) in dataset.file_name.iteritems()]].copy()
         df.reset_index(drop=True, inplace=True)
 
         return df.copy()
