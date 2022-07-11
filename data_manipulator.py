@@ -178,13 +178,38 @@ class DataUtils:
         return files
 
     @staticmethod
-    def get_multichannels(file_path: str):
+    def get_multichannels(file_path: str, channels: int, strides: int):
         """Return list of files for 2.5D training."""
 
-        
+
+        base, name = os.path.split(file_path)
+        frame_info = name[:-4].split('_')
 
 
-        return
+        # base path + artery info
+        base = os.path.join(base, ''.join([i+'_' for i in frame_info[:-1]]))
+
+
+        frame_number = int(frame_info[-1])
+
+        # deltas for retrieving support frames
+        frame_dif_list = [i for i in range(-channels*strides, channels*strides+1, strides)]
+
+        frame_path_list = []
+
+        # base string construction
+        l = [base, 0, '.png']
+
+
+        for frame_dif in frame_dif_list:
+            # support frame number
+            l[1] = str(frame_number + frame_dif)
+            
+            # build complete path string and append to list 
+            frame_path_list.append(''.join(i for i in l))
+
+
+        return frame_path_list
 
     @staticmethod
     def update_model_name(model_name: str) -> str:
@@ -325,6 +350,7 @@ class TrainingUtils:
 
     @staticmethod
     def get_scheduler_function(scheduler_type: str = "exp_decay", threshold=9, decay=0.1):
+
         def scheduler(epoch, lr):
             if epoch < threshold:
                 return lr
@@ -344,13 +370,17 @@ class TrainingUtils:
         img = tf.image.resize(img, size=image_size)
         return img
 
+
     @staticmethod
-    def multi_x(file_path, image_size=(512, 512)):
-        """Loading multichannel routines."""
+    @tf.function
+    def multi_x(file_path, channels, strides, image_size=(512, 512),):
+        """Multichannel loading routine."""
 
-        files_list = DataUtils
+        files_list = DataUtils.get_multichannels(file_path, channels, strides)
 
-        return
+        img = tf.stack([TrainingUtils.prep_x(i, image_size=image_size) for i in files_list], axis=-1)
+
+        return img
 
     @staticmethod
     @tf.function
