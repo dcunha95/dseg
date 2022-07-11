@@ -352,7 +352,6 @@ class Extractor:
         destination = os.path.join(target_path, "training_results.png")
         shutil.copy(source, destination)
 
-
 class Comparison:
 
     #class variables
