@@ -1,3 +1,4 @@
+import json
 
 
 class PipelineConfig:
@@ -107,3 +108,5 @@ class Setup:
                 setup_dic[i] = self.__dict__[i]
 
         return setup_dic
+
+    
