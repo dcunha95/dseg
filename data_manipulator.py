@@ -177,8 +177,41 @@ class DataUtils:
 
         return files
 
+
     @staticmethod
     def get_multichannels(file_path: str, channels: int = 3, strides: int = 1) -> list:
+        """Return list of files for 2.5D training."""
+
+
+        print(file_path)
+        file_segs = tf.unstack(tf.strings.split(file_path, sep="/"))
+        base = tf.strings.join(file_segs[:-1], separator="/")
+        name = tf.unstack(tf.strings.split(file_segs[-1], sep="."))[0]
+
+        frame_info = tf.unstack(tf.strings.split(name, sep="_"))
+
+        frame_number = tf.strings.to_number(frame_info[-1], out_type=tf.dtypes.int32)
+
+        # base path + artery info
+        base = tf.strings.join([base, tf.strings.join(frame_info[:-1], separator="_")], separator="/")
+
+        # deltas for retrieving support frames
+        frame_dif_list = [i for i in range(-channels*strides, channels*strides+1, strides)]
+
+        frame_path_list = []
+
+        for frame_dif in frame_dif_list:
+            # support frame number
+            frame = tf.strings.as_string(frame_number + frame_dif)
+            
+            # build string tensor
+            frame_path_list.append(tf.strings.join([base, "_", frame, ".png"], separator=""))
+
+        return frame_path_list
+
+
+    @staticmethod
+    def _get_multichannels(file_path: str, channels: int = 3, strides: int = 1) -> list:
         """Return list of files for 2.5D training."""
 
 
