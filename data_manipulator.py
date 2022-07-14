@@ -390,7 +390,7 @@ class TrainingUtils:
 
     @staticmethod
     @tf.function
-    def prep_y(file_path, image_size=(512, 512)):
+    def prep_y(file_path, image_size=(512, 512), **kwargs):
         """Default preprocessing routine for ground truths, from file path to input tensor ready for training."""
 
         img = tf.io.read_file(file_path)
