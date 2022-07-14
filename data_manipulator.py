@@ -178,11 +178,15 @@ class DataUtils:
         return files
 
     @staticmethod
-    def get_multichannels(file_path: str, channels: int, strides: int):
+    def get_multichannels(file_path: str, channels: int = 3, strides: int = 1) -> list:
         """Return list of files for 2.5D training."""
 
 
+        print(file_path)
         base, name = os.path.split(file_path)
+        # name = file_path.split('/')[-1]
+        # base = file_path[:-(len(name)+1)]
+
         frame_info = name[:-4].split('_')
 
 
@@ -361,7 +365,7 @@ class TrainingUtils:
 
     @staticmethod
     @tf.function
-    def prep_x(file_path, image_size=(512, 512)):
+    def prep_x(file_path, image_size=(512, 512), **kwargs):
         """Default preprocessing routine for inputs, from file path to input tensor ready for training."""
 
         img = tf.io.read_file(file_path)
@@ -372,14 +376,16 @@ class TrainingUtils:
 
 
     @staticmethod
-    @tf.function
-    def multi_x(file_path, channels, strides, image_size=(512, 512),):
+    def multi_x(file_path: str, channels: int = 3, channel_strides: int = 1, image_size=(512, 512), **kwargs):
         """Multichannel loading routine."""
 
-        files_list = DataUtils.get_multichannels(file_path, channels, strides)
+        # file_path = file_path.numpy().decode('UTF-8')
+        # file_path = np.array(file_path).item().decode("UTF-8")
+
+        files_list = DataUtils.get_multichannels(file_path, channels, channel_strides)
 
         img = tf.stack([TrainingUtils.prep_x(i, image_size=image_size) for i in files_list], axis=-1)
-
+        
         return img
 
     @staticmethod
@@ -437,6 +443,7 @@ class TrainingUtils:
         prep_x=None,
         prep_y=None,
         return_y: bool = True,
+        **kwargs,
     ):
         """
         Returns a tf.data dataset instance from a DataFrame object, with preprocessing and other data manipulation routines applied.
@@ -459,8 +466,8 @@ class TrainingUtils:
                 prep_y = TrainingUtils.prep_y
 
             def prep_ds(x, y):
-                px = prep_x(x, image_size=image_size)
-                py = prep_y(y, image_size=image_size)
+                px = prep_x(x, image_size=image_size, **kwargs)
+                py = prep_y(y, image_size=image_size, **kwargs)
                 return px, py
 
             tf_ds = tf.data.Dataset.from_tensor_slices((ds.raw_path, ds.mask_path))

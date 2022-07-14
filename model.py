@@ -31,6 +31,8 @@ class Model:
 
         self.__history = None
 
+        self.__prep_kwargs = {}
+
         # metrics setup
         if self.setup.net_config.multi_output:
             self.__metrics = {
@@ -83,16 +85,17 @@ class Model:
             self.__prep_x = TrainingUtils.prep_x
 
         else:
+            print("----> Using 2.5D strategy")
+            # self.__prep_x = lambda file_path, image_size: TrainingUtils.multi_x(
+            #     file_path=file_path, 
+            #     channels=self.setup.net_config.channels,
+            #     strides=self.setup.net_config.channel_strides,
+            #     image_size=image_size,
+            # )
+            self.__prep_x = TrainingUtils.multi_x
+            self.__prep_kwargs["channels"] = self.setup.net_config.channels
+            self.__prep_kwargs["channel_strides"] = self.setup.net_config.channel_strides
             
-            self.__prep_x = lambda file_path, image_size: TrainingUtils.multi_x(
-                file_path=file_path, 
-                channels=self.setup.net_config.channels, 
-                strides=self.setup.net_config.channel_strides,
-                image_size=image_size,
-            )
-            
-
-        self.__prep_x = TrainingUtils.prep_x
 
         if self.setup.net_config.multi_output:
             self.__prep_y = TrainingUtils.split_y
@@ -223,16 +226,19 @@ class Model:
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
+                **self.__prep_kwargs,
             )
 
             self.__val_gen = TrainingUtils.get_tf_dataset(
-                # ds=self.val_dataset,
-                ds=self.stt_dataset,
+                ds=self.val_dataset,
+                # ds=self.stt_dataset,
                 image_size=image_size,
                 batch_size=batch_size,
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
+                setup=self.setup,
+                **self.__prep_kwargs,
             )
 
             self.__tst_gen = TrainingUtils.get_tf_dataset(
@@ -242,6 +248,7 @@ class Model:
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
+                **self.__prep_kwargs,
             )
 
             self.__stt_gen = TrainingUtils.get_tf_dataset(
@@ -251,6 +258,7 @@ class Model:
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
+                **self.__prep_kwargs,
             )
 
             self.__dataset_ready = True
@@ -384,6 +392,7 @@ class Model:
             prep_x=self.prep_x,
             prep_y=self.prep_y,
             return_y=False,
+            **self.__prep_kwargs,
         )
 
         print_options = self.setup.pipeline_config.print_options
@@ -615,6 +624,7 @@ class Model:
             prep_x=self.prep_x,
             prep_y=self.prep_y,
             return_y=True,
+            **self.__prep_kwargs,
         )
 
         print_options = self.setup.pipeline_config.print_options

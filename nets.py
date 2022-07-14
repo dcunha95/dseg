@@ -369,7 +369,7 @@ class NetBuilder:
         kernel_initializer = net_config.kernel_initializer
         bias_initializer = net_config.bias_initializer
 
-        # print("input_shape:", input_shape)
+        print("input_shape:", input_shape)
 
         inputs = tf.keras.Input(input_shape)
         x = inputs
