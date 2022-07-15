@@ -237,7 +237,6 @@ class Model:
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
-                setup=self.setup,
                 **self.__prep_kwargs,
             )
 

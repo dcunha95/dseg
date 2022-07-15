@@ -184,11 +184,11 @@ class DataUtils:
 
 
         print(file_path)
-        file_segs = tf.unstack(tf.strings.split(file_path, sep="/"))
+        file_segs = tf.strings.split(file_path, sep="/")
         base = tf.strings.join(file_segs[:-1], separator="/")
         name = tf.unstack(tf.strings.split(file_segs[-1], sep="."))[0]
 
-        frame_info = tf.unstack(tf.strings.split(name, sep="_"))
+        frame_info = tf.strings.split(name, sep="_")
 
         frame_number = tf.strings.to_number(frame_info[-1], out_type=tf.dtypes.int32)
 
@@ -196,16 +196,28 @@ class DataUtils:
         base = tf.strings.join([base, tf.strings.join(frame_info[:-1], separator="_")], separator="/")
 
         # deltas for retrieving support frames
-        frame_dif_list = [i for i in range(-channels*strides, channels*strides+1, strides)]
+        frame_dif_list = tuple([i for i in range(-channels*strides, channels*strides+1, strides)])
 
         frame_path_list = []
 
-        for frame_dif in frame_dif_list:
-            # support frame number
-            frame = tf.strings.as_string(frame_number + frame_dif)
+        # deltas for retrieving support frames
+        frame_dif_list = tf.range(-channels*strides, channels*strides+1, strides)
+
+        frame_path_list = []
+
+        # for frame_dif in frame_dif_list:
             
-            # build string tensor
-            frame_path_list.append(tf.strings.join([base, "_", frame, ".png"], separator=""))
+        #     # build string tensor
+        #     frame_path_list.append(tf.strings.join([base, "_", tf.strings.as_string(frame_number + frame_dif), ".png"], separator=""))
+
+        # deltas for retrieving support frames
+        frame_list = tf.range(-channels*strides+frame_number, channels*strides+1+frame_number, strides)
+        frame_list = tf.strings.as_string(frame_list)
+
+        frame_path_list = tf.map_fn(
+            lambda x: tf.strings.join([base, "_", x,".png"], separator=""),
+            frame_list,
+        )
 
         return frame_path_list
 
@@ -418,6 +430,7 @@ class TrainingUtils:
         files_list = DataUtils.get_multichannels(file_path, channels, channel_strides)
 
         img = tf.stack([TrainingUtils.prep_x(i, image_size=image_size) for i in files_list], axis=-1)
+        # shape = tf.ensure_shape(img, [None, image_size[0], image_size[1], channels])
         
         return img
 
@@ -472,6 +485,8 @@ class TrainingUtils:
         ds: pd.DataFrame,
         image_size: tuple = (512, 512),
         batch_size: int = 1,
+        channels: int = 1,
+        multi_output: bool = True,
         shard: bool = True,
         prep_x=None,
         prep_y=None,
@@ -498,9 +513,13 @@ class TrainingUtils:
             if prep_y is None:
                 prep_y = TrainingUtils.prep_y
 
+            @tf.function
             def prep_ds(x, y):
                 px = prep_x(x, image_size=image_size, **kwargs)
                 py = prep_y(y, image_size=image_size, **kwargs)
+
+                # shape_x = tf.ensure_shape(px, [None, image_size[0], image_size[1], channels])
+
                 return px, py
 
             tf_ds = tf.data.Dataset.from_tensor_slices((ds.raw_path, ds.mask_path))
@@ -509,6 +528,9 @@ class TrainingUtils:
 
             def prep_ds(x):
                 px = prep_x(x, image_size=image_size)
+
+                # shape_x = tf.ensure_shape(px, [None, image_size[0], image_size[1], channels])
+
                 return px
 
             tf_ds = tf.data.Dataset.from_tensor_slices(ds.raw_path)
