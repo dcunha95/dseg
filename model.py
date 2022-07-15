@@ -93,8 +93,8 @@ class Model:
             #     image_size=image_size,
             # )
             self.__prep_x = TrainingUtils.multi_x
-            self.__prep_kwargs["channels"] = self.setup.net_config.channels
-            self.__prep_kwargs["channel_strides"] = self.setup.net_config.channel_strides
+            # self.__prep_kwargs["channels"] = self.setup.net_config.channels
+            # self.__prep_kwargs["channel_strides"] = self.setup.net_config.channel_strides
             
 
         if self.setup.net_config.multi_output:
@@ -218,15 +218,20 @@ class Model:
         if tf_data:
             image_size = self.setup.net_config.image_size
             batch_size = self.setup.fit_config.batch_size
+            channels = self.setup.net_config.channels
+            strides = self.setup.net_config.channel_strides
+            
 
             self.__trn_gen = TrainingUtils.get_tf_dataset(
                 ds=self.trn_dataset,
                 image_size=image_size,
                 batch_size=batch_size,
+                channels=channels,
+                strides=strides,
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
-                **self.__prep_kwargs,
+                # **self.__prep_kwargs,
             )
 
             self.__val_gen = TrainingUtils.get_tf_dataset(
@@ -234,30 +239,36 @@ class Model:
                 # ds=self.stt_dataset,
                 image_size=image_size,
                 batch_size=batch_size,
+                channels=channels,
+                strides=strides,
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
-                **self.__prep_kwargs,
+                # **self.__prep_kwargs,
             )
 
             self.__tst_gen = TrainingUtils.get_tf_dataset(
                 ds=self.tst_dataset,
                 image_size=image_size,
                 batch_size=batch_size,
+                channels=channels,
+                strides=strides,
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
-                **self.__prep_kwargs,
+                # **self.__prep_kwargs,
             )
 
             self.__stt_gen = TrainingUtils.get_tf_dataset(
                 ds=self.stt_dataset,
                 image_size=image_size,
                 batch_size=batch_size,
+                channels=channels,
+                strides=strides,
                 prep_x=self.prep_x,
                 prep_y=self.prep_y,
                 return_y=True,
-                **self.__prep_kwargs,
+                # **self.__prep_kwargs,
             )
 
             self.__dataset_ready = True
@@ -387,11 +398,13 @@ class Model:
             ds=dataset,
             image_size=self.setup.net_config.image_size,
             batch_size=1,
+            channels=self.setup.net_config.channels,
+            strides=self.setup.net_config.channel_strides,
             shard=False,
             prep_x=self.prep_x,
             prep_y=self.prep_y,
             return_y=False,
-            **self.__prep_kwargs,
+            # **self.__prep_kwargs,
         )
 
         print_options = self.setup.pipeline_config.print_options
@@ -619,11 +632,13 @@ class Model:
             ds=dataset,
             image_size=self.setup.net_config.image_size,
             batch_size=1,
+            channels=self.setup.net_config.channels,
+            strides=self.setup.net_config.channel_strides,
             shard=False,
             prep_x=self.prep_x,
             prep_y=self.prep_y,
             return_y=True,
-            **self.__prep_kwargs,
+            # **self.__prep_kwargs,
         )
 
         print_options = self.setup.pipeline_config.print_options

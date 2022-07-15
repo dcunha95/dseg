@@ -227,7 +227,7 @@ class DataUtils:
         """Return list of files for 2.5D training."""
 
 
-        print(file_path)
+        # print(file_path)
         base, name = os.path.split(file_path)
         # name = file_path.split('/')[-1]
         # base = file_path[:-(len(name)+1)]
@@ -248,8 +248,6 @@ class DataUtils:
 
         # base string construction
         l = [base, 0, '.png']
-
-
         for frame_dif in frame_dif_list:
             # support frame number
             l[1] = str(frame_number + frame_dif)
@@ -257,8 +255,7 @@ class DataUtils:
             # build complete path string and append to list 
             frame_path_list.append(''.join(i for i in l))
 
-
-        return frame_path_list
+        return tuple(frame_path_list)
 
     @staticmethod
     def update_model_name(model_name: str) -> str:
@@ -421,15 +418,15 @@ class TrainingUtils:
 
 
     @staticmethod
-    def multi_x(file_path: str, channels: int = 3, channel_strides: int = 1, image_size=(512, 512), **kwargs):
+    def multi_x(file_path: tuple, channels: int = 3, channel_strides: int = 1, image_size=(512, 512), **kwargs):
         """Multichannel loading routine."""
 
         # file_path = file_path.numpy().decode('UTF-8')
         # file_path = np.array(file_path).item().decode("UTF-8")
 
-        files_list = DataUtils.get_multichannels(file_path, channels, channel_strides)
+        # files_list = DataUtils.get_multichannels(file_path, channels, channel_strides)
 
-        img = tf.stack([TrainingUtils.prep_x(i, image_size=image_size) for i in files_list], axis=-1)
+        img = tf.stack([TrainingUtils.prep_x(i, image_size=image_size) for i in file_path], axis=-1)
         # shape = tf.ensure_shape(img, [None, image_size[0], image_size[1], channels])
         
         return img
@@ -486,7 +483,7 @@ class TrainingUtils:
         image_size: tuple = (512, 512),
         batch_size: int = 1,
         channels: int = 1,
-        multi_output: bool = True,
+        strides: int = 1,
         shard: bool = True,
         prep_x=None,
         prep_y=None,
@@ -507,7 +504,15 @@ class TrainingUtils:
         """
 
         if prep_x is None:
-            prep_x = TrainingUtils.prep_x
+            # if doing multichannel, use multi_x prep
+            if channels == 1:
+                prep_x = TrainingUtils.prep_x
+            else:
+                prep_x = TrainingUtils.multi_x
+
+        # if doing multichannel, tf.data's "x" will be a list of files paths instead of a single string
+        if channels != 1:
+            raw_paths = [DataUtils._get_multichannels(j, channels, strides) for (i,j) in ds.x.iteritems()]
 
         if return_y:
             if prep_y is None:
@@ -517,23 +522,25 @@ class TrainingUtils:
             def prep_ds(x, y):
                 px = prep_x(x, image_size=image_size, **kwargs)
                 py = prep_y(y, image_size=image_size, **kwargs)
-
                 # shape_x = tf.ensure_shape(px, [None, image_size[0], image_size[1], channels])
-
                 return px, py
 
-            tf_ds = tf.data.Dataset.from_tensor_slices((ds.raw_path, ds.mask_path))
+            if channels != 1:
+                tf_ds = tf.data.Dataset.from_tensor_slices((raw_paths, ds.mask_path))
+            else:
+                tf_ds = tf.data.Dataset.from_tensor_slices((ds.raw_path, ds.mask_path))
 
         else:
 
             def prep_ds(x):
                 px = prep_x(x, image_size=image_size)
-
                 # shape_x = tf.ensure_shape(px, [None, image_size[0], image_size[1], channels])
-
                 return px
 
-            tf_ds = tf.data.Dataset.from_tensor_slices(ds.raw_path)
+            if channels != 1:
+                tf_ds = tf.data.Dataset.from_tensor_slices(raw_paths)
+            else:
+                tf_ds = tf.data.Dataset.from_tensor_slices(ds.raw_path)
 
         options = tf.data.Options()
 
