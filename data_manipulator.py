@@ -242,7 +242,8 @@ class DataUtils:
         frame_number = int(frame_info[-1])
 
         # deltas for retrieving support frames
-        frame_dif_list = [i for i in range(-channels*strides, channels*strides+1, strides)]
+        side_frames = int((channels-1)/2) 
+        frame_dif_list = [i for i in range(-side_frames*strides, side_frames*strides+1, strides)]
 
         frame_path_list = []
 
@@ -426,7 +427,14 @@ class TrainingUtils:
 
         # files_list = DataUtils.get_multichannels(file_path, channels, channel_strides)
 
-        img = tf.stack([TrainingUtils.prep_x(i, image_size=image_size) for i in file_path], axis=-1)
+        # img = tf.stack([TrainingUtils.prep_x(i, image_size=image_size) for i in file_path], axis=-1)
+
+        img = tf.map_fn(
+            lambda i: TrainingUtils.prep_x(i, image_size=image_size),
+            file_path,
+            fn_output_signature=tf.float32,
+        )
+        img = tf.reshape(img, shape=(*image_size, channels))
         # shape = tf.ensure_shape(img, [None, image_size[0], image_size[1], channels])
         
         return img
@@ -512,7 +520,7 @@ class TrainingUtils:
 
         # if doing multichannel, tf.data's "x" will be a list of files paths instead of a single string
         if channels != 1:
-            raw_paths = [DataUtils._get_multichannels(j, channels, strides) for (i,j) in ds.x.iteritems()]
+            raw_paths = [DataUtils._get_multichannels(j, channels, strides) for (i,j) in ds.raw_path.iteritems()]
 
         if return_y:
             if prep_y is None:
