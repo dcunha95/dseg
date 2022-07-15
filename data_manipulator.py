@@ -533,8 +533,8 @@ class TrainingUtils:
 
             @tf.function
             def prep_ds(x, y):
-                px = prep_x(x, image_size=image_size, **kwargs)
-                py = prep_y(y, image_size=image_size, **kwargs)
+                px = prep_x(x, image_size=image_size, channels=channels, channel_strides=strides)
+                py = prep_y(y, image_size=image_size, channels=channels, channel_strides=strides)
                 # shape_x = tf.ensure_shape(px, [None, image_size[0], image_size[1], channels])
                 return px, py
 
@@ -546,7 +546,7 @@ class TrainingUtils:
         else:
 
             def prep_ds(x):
-                px = prep_x(x, image_size=image_size)
+                px = prep_x(x, image_size=image_size, channels=channels, channel_strides=strides)
                 # shape_x = tf.ensure_shape(px, [None, image_size[0], image_size[1], channels])
                 return px
 
