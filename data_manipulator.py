@@ -150,7 +150,12 @@ class DataUtils:
         # prune artery borders
         df = pd.DataFrame()
         for artery_i in arteries:
-            df_i = ds.loc[ds.artery_info == artery_i].iloc[border:-border]
+            df_i = ds.loc[ds.artery_info == artery_i]
+            
+            df_i.sort_values("frame_number", inplace=True)
+            df_i.reset_index(drop=True, inplace=True)
+
+            df_i = df_i.iloc[border:-border]
             df = pd.concat([df, df_i])
 
         df.reset_index(drop=True, inplace=True)
