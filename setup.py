@@ -87,14 +87,13 @@ class TensorFlowConfig:
         self,
     ):
 
-        if "strategy" in globals():
-            self.mirrored_strategy = str(globals()["strategy"])
-        else:
-            self.mirrored_strategy = None
-
+        # looking for the script defined variable "strategy" in global scope (wrong, but whatever...)
+        test_variable = tf.Variable(1.)
+        self.mirrored_strategy = str(type(test_variable)) == "<class 'tensorflow.python.distribute.values.MirroredVariable'>"
         self.mixed_precision = tf.keras.mixed_precision.global_policy()._name
         self.auto_clustering = tf.config.optimizer.get_jit()
         
+        del test_variable
 
 class Setup:
     def __init__(
@@ -102,14 +101,16 @@ class Setup:
         pipeline_config=PipelineConfig(),
         net_config=NetConfig(),
         fit_config=FitConfig(),
-        tf_config=TensorFlowConfig(),
+        # tf_config=TensorFlowConfig(),
         model_from_file=None,
     ):
 
         self.pipeline_config = pipeline_config
         self.net_config = net_config
         self.fit_config = fit_config
-        self.tf_config = tf_config
+
+        self.tf_config = TensorFlowConfig()
+
         self.model_from_file = model_from_file
 
     @property
@@ -134,12 +135,12 @@ class Setup:
             sl.append("".join([i, "\n"]))
             
             for j in d[i]:
-                sl.append("".join(["\n\t", j, ": ", d[i][j]]))
+                sl.append("".join( ["\n\t", str(j), ": ", str(d[i][j])] ))
 
-            sl.append("\n")
+            sl.append("\n\n")
         
-        sl.append("".join(["model_from_file: ", d["model_from_file"]]))
-        return "".join([sl])
+        sl.append("".join(["model_from_file: ", str(d["model_from_file"])]))
+        return "".join(sl)
 
     @staticmethod
     def from_dict(d):
