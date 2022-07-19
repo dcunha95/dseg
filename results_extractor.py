@@ -430,6 +430,7 @@ class Comparison:
         specs["Multi-Output"] = specs["Multi-Output"].fillna(False).replace("X", True)
         specs["Mixed Precision"] = specs["Mixed Precision"].fillna(False).replace("X", True)
         specs["Downsizing"] = specs["Downsizing"].fillna("None")
+        specs["Multi-channel"] = specs["Multi-channel"].fillna("None") 
         specs["Notes"] = specs["Notes"].fillna("")
 
         return specs
@@ -455,7 +456,7 @@ class Comparison:
     @staticmethod
     def _fix_dtypes(specs):
         specs = specs.copy()
-        to_str = ["Status", "Net", "Loss", "Optimizer", "Notes", "Downsizing", "Base ID"]
+        to_str = ["Status", "Net", "Loss", "Optimizer", "Notes", "Downsizing", "Base ID", "Multi-channel"]
         to_int = ["Epochs", "Depth", "Node Structure", "Base Filters", "Kernel Size", "Batch Size"]
         to_bool = ["Multi-GPU", "Multi-Output", "Mixed Precision"]
         to_float = ["Learning Rate", "Median Avg. IoU", "IQR Avg. IoU"]

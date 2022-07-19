@@ -1,5 +1,5 @@
 import json
-
+import tensorflow as tf
 
 class PipelineConfig:
     def __init__(
@@ -82,24 +82,41 @@ class FitConfig:
         self.monitor = monitor
 
 
+class TensorFlowConfig:
+    def __init__(
+        self,
+    ):
+
+        if "strategy" in globals():
+            self.mirrored_strategy = str(globals()["strategy"])
+        else:
+            self.mirrored_strategy = None
+
+        self.mixed_precision = tf.keras.mixed_precision.global_policy()._name
+        self.auto_clustering = tf.config.optimizer.get_jit()
+        
+
 class Setup:
     def __init__(
         self,
         pipeline_config=PipelineConfig(),
         net_config=NetConfig(),
         fit_config=FitConfig(),
+        tf_config=TensorFlowConfig(),
         model_from_file=None,
     ):
+
         self.pipeline_config = pipeline_config
         self.net_config = net_config
         self.fit_config = fit_config
+        self.tf_config = tf_config
         self.model_from_file = model_from_file
 
     @property
-    def dict(self):
+    def to_dict(self):
         setup_dic = {}
         for i in self.__dict__:
-            if i in ["pipeline_config", "net_config", "fit_config"]:
+            if i in ["pipeline_config", "net_config", "fit_config", "tf_config"]:
                 dic = {}
                 for j in self.__dict__[i].__dict__:
                     dic[j] = self.__dict__[i].__dict__[j]
@@ -109,4 +126,50 @@ class Setup:
 
         return setup_dic
 
-    
+    def __repr__(self):
+
+        d = self.to_dict
+        sl = []
+        for i in ["pipeline_config", "net_config", "fit_config", "tf_config"]:
+            sl.append("".join([i, "\n"]))
+            
+            for j in d[i]:
+                sl.append("".join(["\n\t", j, ": ", d[i][j]]))
+
+            sl.append("\n")
+        
+        sl.append("".join(["model_from_file: ", d["model_from_file"]]))
+        return "".join([sl])
+
+    @staticmethod
+    def from_dict(d):
+
+        pipeline_config = PipelineConfig(**d["pipeline_config"]) 
+        net_config = NetConfig(**d["net_config"]) 
+        fit_config = FitConfig(**d["fit_config"]) 
+        tf_config = TensorFlowConfig(**d["tf_config"])
+        model_from_file = d["model_from_file"]
+
+        setup = Setup(
+            pipeline_config=pipeline_config, 
+            net_config=net_config, 
+            fit_config=fit_config, 
+            tf_config=tf_config, 
+            model_from_file=model_from_file,
+        )
+ 
+        return setup
+
+    @staticmethod
+    def from_json(path):
+
+        with open(path) as d:
+            loaded_dict = json.load(d)
+
+        instance = Setup.from_dict(loaded_dict)
+
+        return instance
+
+    def to_json(self, path):
+        with open(path, "w") as d:
+            json.dump(self.to_dict, d, indent=4)    
