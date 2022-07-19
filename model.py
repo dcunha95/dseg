@@ -46,7 +46,7 @@ class Model:
 
         # update name and create folder
         self.__model_name = DataUtils.update_model_name(self.__model_name)
-
+        
         if self.__setup.model_from_file is None:
 
             if self.__setup.net_config.model_type == "unet":
@@ -107,6 +107,9 @@ class Model:
         self.__val_gen = None
         self.__tst_gen = None
         self.__stt_gen = None
+
+        # save setup to json
+        self.__setup.to_json("setup.json")
 
     @property
     def model_name(self):

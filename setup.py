@@ -8,6 +8,7 @@ class PipelineConfig:
         dataset_percent=0.1,
         print_options=[True, True, True, True, True, True],
         name_format=["Average", "Name"],
+        **kwargs,
     ):
         # pipeline related:
         self.split = split
@@ -36,6 +37,7 @@ class NetConfig:
         multi_output=False,
         channels = 1,
         channel_strides = 1,
+        **kwargs,
     ):
         # Net related:
         self.model_type = model_type
@@ -43,7 +45,7 @@ class NetConfig:
         self.pool_size = pool_size
         self.concat_all = concat_all
         self.node_type = node_type
-        self.image_size = image_size
+        self.image_size = tuple(image_size)
         self.down_size = down_size
         self.input_shape = self.image_size + (channels,)
         self.base_filters = base_filters
@@ -69,6 +71,7 @@ class FitConfig:
         lr_decay=0.05,
         loss="categorical_crossentropy",
         monitor="val_loss",  # "val_loss" or "val_mean_io_u"
+        **kwargs,
     ):
         # fit related:
         self.sample_weight = sample_weight
@@ -85,31 +88,62 @@ class FitConfig:
 class TensorFlowConfig:
     def __init__(
         self,
+        mirrored_strategy = None,
+        mixed_precision = None,
+        auto_clustering = None,
+        **kwargs,
     ):
 
-        # looking for the script defined variable "strategy" in global scope (wrong, but whatever...)
-        test_variable = tf.Variable(1.)
-        self.mirrored_strategy = str(type(test_variable)) == "<class 'tensorflow.python.distribute.values.MirroredVariable'>"
-        self.mixed_precision = tf.keras.mixed_precision.global_policy()._name
-        self.auto_clustering = tf.config.optimizer.get_jit()
-        
-        del test_variable
+        # test_variable = tf.Variable(1.)
+        # self.mirrored_strategy = str(type(test_variable)) == "<class 'tensorflow.python.distribute.values.MirroredVariable'>"
+        # self.mixed_precision = tf.keras.mixed_precision.global_policy()._name
+        # self.auto_clustering = tf.config.optimizer.get_jit()
+        # del test_variable
+
+        if mirrored_strategy is None:
+            test_variable = tf.Variable(1.)
+            mirrored_strategy = str(type(test_variable)) == "<class 'tensorflow.python.distribute.values.MirroredVariable'>"
+            del test_variable
+
+        if mixed_precision is None:
+            mixed_precision = tf.keras.mixed_precision.global_policy()._name
+            
+        if auto_clustering is None:
+            auto_clustering = tf.config.optimizer.get_jit()
+            
+
+        self.mirrored_strategy = mirrored_strategy
+        self.mixed_precision = mixed_precision
+        self.auto_clustering = auto_clustering
+
 
 class Setup:
     def __init__(
         self,
-        pipeline_config=PipelineConfig(),
-        net_config=NetConfig(),
-        fit_config=FitConfig(),
-        # tf_config=TensorFlowConfig(),
+        pipeline_config=None,
+        net_config=None,
+        fit_config=None,
+        tf_config=None,
         model_from_file=None,
+        **kwargs,
     ):
+
+        if pipeline_config is None:
+            pipeline_config=PipelineConfig()
+        
+        if net_config is None:
+            net_config=NetConfig()
+
+        if fit_config is None:
+            fit_config=FitConfig()
+
+        if tf_config is None:
+            tf_config=TensorFlowConfig()
 
         self.pipeline_config = pipeline_config
         self.net_config = net_config
         self.fit_config = fit_config
-
-        self.tf_config = TensorFlowConfig()
+        self.tf_config = tf_config
 
         self.model_from_file = model_from_file
 
