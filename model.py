@@ -664,8 +664,8 @@ class Model:
                 # print(pred[0].shape)
 
             for (j, w) in enumerate(pred):
-                name = PlotUtils.pred_name(ref_data, i, 0, name_format=["iou_avg", "file_name"])
-                input_img_path = dataset.iloc[i + j]["raw_path"]
+                # name = PlotUtils.pred_name(ref_data, i, 0, name_format=["iou_avg", "file_name"])
+                # input_img_path = dataset.iloc[i + j]["raw_path"]
                 target_img_path = dataset.iloc[i + j]["mask_path"]
 
                 stats_list[i + j] = TrainingUtils.prediction_metrics(prediction=w, target_img_path=target_img_path)

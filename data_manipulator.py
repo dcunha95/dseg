@@ -200,23 +200,10 @@ class DataUtils:
         # base path + artery info
         base = tf.strings.join([base, tf.strings.join(frame_info[:-1], separator="_")], separator="/")
 
-        # deltas for retrieving support frames
-        frame_dif_list = tuple([i for i in range(-channels*strides, channels*strides+1, strides)])
+        side_channels = int((channels-1)/2)
 
-        frame_path_list = []
-
-        # deltas for retrieving support frames
-        frame_dif_list = tf.range(-channels*strides, channels*strides+1, strides)
-
-        frame_path_list = []
-
-        # for frame_dif in frame_dif_list:
-            
-        #     # build string tensor
-        #     frame_path_list.append(tf.strings.join([base, "_", tf.strings.as_string(frame_number + frame_dif), ".png"], separator=""))
-
-        # deltas for retrieving support frames
-        frame_list = tf.range(-channels*strides+frame_number, channels*strides+1+frame_number, strides)
+        # all frames
+        frame_list = tf.range(-side_channels*strides+frame_number, side_channels*strides+1+frame_number, strides)
         frame_list = tf.strings.as_string(frame_list)
 
         frame_path_list = tf.map_fn(
