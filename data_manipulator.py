@@ -422,12 +422,22 @@ class TrainingUtils:
         # img = tf.stack([TrainingUtils.prep_x(i, image_size=image_size) for i in file_path], axis=-1)
 
         img = tf.map_fn(
-            lambda i: TrainingUtils.prep_x(i, image_size=image_size),
+            # lambda i: TrainingUtils.prep_x(i, image_size=image_size),
+            lambda i: tf.reshape(TrainingUtils.prep_x(i, image_size=image_size), image_size),
             file_path,
             fn_output_signature=tf.float32,
         )
-        img = tf.reshape(img, shape=(*image_size, channels))
-        # shape = tf.ensure_shape(img, [None, image_size[0], image_size[1], channels])
+        
+        img = tf.stack(tf.unstack(img, axis=0), axis=2)
+
+        #nasty bug...
+        # img = tf.reshape(img, shape=(*image_size, channels))
+
+        #can't have loops in graphs...
+        # img = tf.stack([i for i in img], axis=2)
+        # img = tf.reshape(img, shape=(*image_size, channels))
+
+        # shape = tf.ensure_shape(img, [None, image_size[0], image_size[1], channels]        
         
         return img
 
