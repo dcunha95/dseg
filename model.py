@@ -374,11 +374,10 @@ class Model:
         if save_folder == "":
             save_folder = self.model_name
 
-        if not os.path.exists(save_folder):
-            os.makedirs(save_folder)
-
-        if not os.path.exists(save_folder + "/predictions"):
-            os.makedirs(save_folder + "/predictions")
+        # make appropriate save_folder/print_options[i] paths if they don't already exist
+        for option in self.setup.pipeline_config.print_options:
+            path = os.path.join(save_folder, "predictions", option)
+            DataUtils.make_path(path) 
 
         # get available columns
         dataset = data.copy()
@@ -418,14 +417,13 @@ class Model:
             # **self.__prep_kwargs,
         )
 
-        print_options = self.setup.pipeline_config.print_options
-
         # print options: [raw, output, input, input_original, gt, gt_original]
+        
         if simple_print:
-            print_options = [False, True, False, False, False, False]  # print only the output
+            print_options = DataUtils.print_options_to_array(["output"])
             name_format = ["file_name"]
         else:
-            print_options = [*print_options]  # default options set at setup
+            print_options = DataUtils.print_options_to_array(self.setup.pipeline_config.print_options)
             # name_format = [col_dict[i] for i in self.setup.pipeline_config.name_format]
             name_format = [*self.setup.pipeline_config.name_format]
 

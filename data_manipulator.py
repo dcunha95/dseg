@@ -16,6 +16,17 @@ class DataUtils:
     Low level data related utilities
     """
 
+    @staticmethod
+    def makepath(path : str = ""):
+        """Checks if path exists. If not, creates it."""
+        
+        try:
+            if not os.path.exists(path):
+                os.makedirs(path) 
+        except Exception as exception:
+            raise(exception)
+
+
     # one at a time
     @staticmethod
     def get_path(input_dir: str) -> tuple:
@@ -347,6 +358,9 @@ class DataUtils:
         res[["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results_primary.tex")
         res[["L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]].to_latex(save_folder + "/results_secondary.tex")
 
+        """Transforms a list of print options to optimized array"""
+
+        all_options = ["raw", "output", "input", "input_original", "gt", "gt_original", "channels", "contour"]
 
 class TrainingUtils:
     """
@@ -668,46 +682,61 @@ class PlotUtils:
         save_folder: str,
         input_img_path: str = "",
         target_img_path: str = "",
-        print_options=[True, True, True, True, True, True],
+        print_options: list = [True, True, True, True, True, True, True, True],
+        x = None,
     ):
         """Saves output"""
 
-        print_options = print_options
+        # ["raw", "output", "input", "input-original", "gt", "gt-original", "channels", "contour"]
+        if isinstance(print_options[0], str):
+            # make appropriate save_folder/print_options[i] paths if they don't already exist
+            for option in print_options:
+                path = os.path.join(save_folder, "predictions", option)
+                DataUtils.make_path(path)
 
-        # if no input path is passed, do not try to generate ground truth images
-        if input_img_path == "":
-            print_options[2] = False
-            print_options[3] = False
+            print_options = DataUtils.print_options_to_array(print_options)
 
-        # if no target path is passed, do not try to generate ground truth images
-        if target_img_path == "":
-            print_options[4] = False
-            print_options[5] = False
-
-        if print_options[0]:
+        if "raw" in print_options:
             img = PIL.ImageOps.autocontrast(tf.keras.preprocessing.image.array_to_img(pred))
-            img.save(save_folder + "/predictions" + "/" + name + "_raw.png", format="png")
-        if print_options[1]:
+            img.save(paths["raw"], format="png")
+        
+        if "output" in print_options:
             img = np.array(np.argmax(pred, axis=-1), dtype="uint8")
             img = np.expand_dims((img == 1).astype("uint8") * 100 + (img == 2).astype("uint8") * 255, axis=-1)
             img = tf.keras.preprocessing.image.array_to_img(img, scale=False)
-            img.save(save_folder + "/predictions" + "/" + name + "_output.png", format="png")
-        if print_options[2]:
+            img.save(paths["output"], format="png")
+        
+        if "input" in print_options and input_img_path != "":
             img = tf.keras.preprocessing.image.load_img(
                 input_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest"
             )
-            img.save(save_folder + "/predictions" + "/" + name + "_input.png", format="png")
         if print_options[3]:
+            img.save(paths["input"], format="png")
+        
+        if "input-original" in print_options and input_img_path != "":
             img = tf.keras.preprocessing.image.load_img(input_img_path)
-            img.save(save_folder + "/predictions" + "/" + name + "_input_original.png", format="png")
-        if print_options[4]:
+            img.save(paths["input-original"], format="png")
+        
+        if "gt" in print_options and target_img_path != "":
             img = tf.keras.preprocessing.image.load_img(
                 target_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest"
             )
-            img.save(save_folder + "/predictions" + "/" + name + "_gt.png", format="png")
-        if print_options[5]:
+            img.save(paths["gt"], format="png")
+        
+        if "gt-original" in print_options and target_img_path != "":
             img = tf.keras.preprocessing.image.load_img(target_img_path)
-            img.save(save_folder + "/predictions" + "/" + name + "_gt_original.png", format="png")
+            img.save(paths["gt-original"], format="png")
+        
+        if "channels" in print_options and x is not None:
+            multi = tf.unstack(tf.unstack(x)[0], axis=-1)
+            multi_img = [tf.keras.preprocessing.image.array_to_img(np.expand_dims(frame_i, axis=-1)) for frame_i in multi]
+            for (i, img_i) in enumerate(multi_img):
+                si = str(i)
+                while len(si) < 3:
+                    si = "0" + si
+
+                img_i.save( "".join([paths["channels"][:], si]), format="png" )
+
         return
 
     @staticmethod

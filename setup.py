@@ -6,10 +6,11 @@ class PipelineConfig:
         self,
         split=[0.6, 0.2, 0.2],
         dataset_percent=0.1,
-        print_options=[True, True, True, True, True, True],
+        print_options=["raw", "output", "input", "input-original", "gt", "gt-original", "channels", "contour"],
         name_format=["Average", "Name"],
         **kwargs,
     ):
+
         # pipeline related:
         self.split = split
         self.dataset_percent = dataset_percent
