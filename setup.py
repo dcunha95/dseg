@@ -16,6 +16,9 @@ class PipelineConfig:
         self.print_options = print_options  # print options: [raw, output, input, input_original, gt, gt_original]
         self.name_format = name_format
 
+    def __repr__(self) -> str:
+        return str(self.__dict__)
+
 
 class NetConfig:
     def __init__(
@@ -59,6 +62,9 @@ class NetConfig:
         self.channels = channels
         self.channel_strides = channel_strides
 
+    def __repr__(self) -> str:
+        return str(self.__dict__)
+
 class FitConfig:
     def __init__(
         self,
@@ -84,6 +90,9 @@ class FitConfig:
         self.loss = loss
         self.monitor = monitor
 
+    def __repr__(self) -> str:
+        return str(self.__dict__)
+
 
 class TensorFlowConfig:
     def __init__(
@@ -107,7 +116,7 @@ class TensorFlowConfig:
 
         if mixed_precision is None:
             mixed_precision = tf.keras.mixed_precision.global_policy()._name
-            
+
         if auto_clustering is None:
             auto_clustering = tf.config.optimizer.get_jit()
             
@@ -115,6 +124,9 @@ class TensorFlowConfig:
         self.mirrored_strategy = mirrored_strategy
         self.mixed_precision = mixed_precision
         self.auto_clustering = auto_clustering
+
+    def __repr__(self) -> str:
+        return str(self.__dict__)
 
 
 class Setup:
@@ -144,8 +156,10 @@ class Setup:
         self.net_config = net_config
         self.fit_config = fit_config
         self.tf_config = tf_config
-
+        
         self.model_from_file = model_from_file
+
+        self.model_properties = {}
 
     @property
     def to_dict(self):
@@ -165,7 +179,7 @@ class Setup:
 
         d = self.to_dict
         sl = []
-        for i in ["pipeline_config", "net_config", "fit_config", "tf_config"]:
+        for i in ["pipeline_config", "net_config", "fit_config", "tf_config", "model_properties"]:
             sl.append("".join([i, "\n"]))
             
             for j in d[i]:
@@ -189,9 +203,11 @@ class Setup:
             pipeline_config=pipeline_config, 
             net_config=net_config, 
             fit_config=fit_config, 
-            tf_config=tf_config, 
+            tf_config=tf_config,
             model_from_file=model_from_file,
         )
+        
+        setup.model_properties = d["model_properties"]
  
         return setup
 

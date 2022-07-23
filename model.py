@@ -63,6 +63,9 @@ class Model:
             )
             self.__fitted = True
 
+        # save number of parameters
+        self.setup.model_properties["parameters_number"] = self.parameters_number
+
         # setup callbacks
         self.__callbacks = [
             tf.keras.callbacks.ModelCheckpoint(
@@ -170,6 +173,11 @@ class Model:
     def analysis(self):
         """Dictionary containing analysis results"""
         return self.__analysis
+
+    @property
+    def parameters_number(self):
+        """Return number of parameters"""
+        return self.__model.count_params()
 
     def get_dataset(
         self,
