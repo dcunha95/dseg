@@ -1,9 +1,11 @@
+import os
+
 import tensorflow as tf
 
 import pandas as pd
 import seaborn as sns
 import numpy as np
-import os
+import skimage as ski 
 
 import PIL
 from PIL import ImageOps
@@ -17,7 +19,7 @@ class DataUtils:
     """
 
     @staticmethod
-    def makepath(path : str = ""):
+    def make_path(path : str = ""):
         """Checks if path exists. If not, creates it."""
         
         try:
@@ -680,12 +682,19 @@ class PlotUtils:
         """Get standard save path for an output"""
         
         # base_path = save_folder/predictions
-        if kname == "":
+        if kname != "":
             # return save_folder/predictions/option/name_kname_option.png
             return "".join([os.path.join(base_path, option, name), "_", kname, "_", option, ".png"])
         else:
             # return save_folder/predictions/option/name_option.png
             return "".join([os.path.join(base_path, option, name), "_", option, ".png"])
+
+    @staticmethod
+    def _get_contours(array):
+        """Return contours"""
+
+        return ski.measure.find_contours(array)
+        
 
     @staticmethod
     def save_output(
@@ -740,7 +749,6 @@ class PlotUtils:
             if print_options[5]:
                 img = tf.keras.preprocessing.image.load_img(target_img_path)
                 img.save(PlotUtils._get_output_save_path(base_path, "gt-original", name), format="png")
-        
 
         if print_options[6] and x is not None:
             multi = tf.unstack(tf.unstack(x)[0], axis=-1)
@@ -750,7 +758,36 @@ class PlotUtils:
                 while len(si) < 3:
                     si = "0" + si
 
-                img_i.save(PlotUtils._get_output_save_path(base_path, "channels", name, si), format="png" )
+                img_i.save(PlotUtils._get_output_save_path(base_path, "channels", name, si), format="png")
+
+        if print_options[7] and input_img_path != "":
+
+            img = tf.keras.preprocessing.image.load_img(input_img_path, target_size=image_size, interpolation="nearest")
+            img = tf.keras.preprocessing.image.img_to_array(img)
+
+            # orange = [255, 150, 0]
+            # blue = [0, 150, 255]
+
+            if target_img_path != "":
+                # ground-truth contour
+                gt_array = tf.keras.preprocessing.image.load_img(target_img_path, color_mode="grayscale", target_size=image_size, interpolation="nearest")
+                gt_array = tf.keras.preprocessing.image.img_to_array(gt_array)
+                gt_contours = PlotUtils._get_contours(gt_array)
+                for i in gt_contours:
+                    for j in i:
+                        img[j[0], j[1], :] = [255, 150, 0]
+
+
+            # predictions contour
+            pred_array = np.array(np.argmax(pred, axis=-1), dtype="uint8")
+            pred_array = (img == 1).astype("uint8") * 100 + (img == 2).astype("uint8") * 255
+            pred_contours = PlotUtils._get_contours(pred_array)
+            for i in pred_contours:
+                for j in i:
+                    img[j[0], j[1], :] = [0, 150, 255]
+
+            img = tf.keras.preprocessing.image.array_to_img(img)
+            img.save(PlotUtils._get_output_save_path(base_path, "contour", name), format="png")
 
         return
 
