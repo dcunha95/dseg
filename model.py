@@ -424,7 +424,6 @@ class Model:
             name_format = ["file_name"]
         else:
             print_options = DataUtils.print_options_to_array(self.setup.pipeline_config.print_options)
-            # name_format = [col_dict[i] for i in self.setup.pipeline_config.name_format]
             name_format = [*self.setup.pipeline_config.name_format]
 
         # predict all
@@ -462,6 +461,8 @@ class Model:
                     input_img_path=input_img_path,
                     target_img_path=target_img_path,
                     print_options=print_options,
+                    image_size=self.setup.net_config.image_size,
+                    x=x,
                 )
 
     def update_trainable_params(self, state: str = "train_all"):

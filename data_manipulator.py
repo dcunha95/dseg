@@ -695,6 +695,7 @@ class PlotUtils:
         input_img_path: str = "",
         target_img_path: str = "",
         print_options: list = [True, True, True, True, True, True, True, True],
+        image_size=(512, 512),
         x = None,
     ):
         """Saves output"""
@@ -710,7 +711,7 @@ class PlotUtils:
 
             print_options = DataUtils.print_options_to_array(print_options)
 
-            
+
         if print_options[0]:
             img = PIL.ImageOps.autocontrast(tf.keras.preprocessing.image.array_to_img(pred))
             img.save(PlotUtils._get_output_save_path(base_path, "raw", name), format="png")
@@ -723,7 +724,7 @@ class PlotUtils:
         
         if input_img_path != "":
             if print_options[2]:
-                img = tf.keras.preprocessing.image.load_img(input_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest")
+                img = tf.keras.preprocessing.image.load_img(input_img_path, color_mode="grayscale", target_size=image_size, interpolation="nearest")
                 img.save(PlotUtils._get_output_save_path(base_path, "input", name), format="png")
         
             if print_options[3]:
@@ -733,7 +734,7 @@ class PlotUtils:
 
         if target_img_path != "":
             if print_options[4]:
-                img = tf.keras.preprocessing.image.load_img(target_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest")
+                img = tf.keras.preprocessing.image.load_img(target_img_path, color_mode="grayscale", target_size=image_size, interpolation="nearest")
                 img.save(PlotUtils._get_output_save_path(base_path, "gt", name), format="png")
             
             if print_options[5]:
