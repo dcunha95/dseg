@@ -676,6 +676,18 @@ class PlotUtils:
         return name
 
     @staticmethod
+    def _get_output_save_path(base_path : str, option : str, name:str, kname : str = ""):
+        """Get standard save path for an output"""
+        
+        # base_path = save_folder/predictions
+        if kname == "":
+            # return save_folder/predictions/option/name_kname_option.png
+            return "".join([os.path.join(base_path, option, name), "_", kname, "_", option, ".png"])
+        else:
+            # return save_folder/predictions/option/name_option.png
+            return "".join([os.path.join(base_path, option, name), "_", option, ".png"])
+
+    @staticmethod
     def save_output(
         name: str,
         pred,
@@ -687,47 +699,49 @@ class PlotUtils:
     ):
         """Saves output"""
 
+        base_path = os.path.join(save_folder, "predictions")
+
         # ["raw", "output", "input", "input-original", "gt", "gt-original", "channels", "contour"]
         if isinstance(print_options[0], str):
             # make appropriate save_folder/print_options[i] paths if they don't already exist
             for option in print_options:
-                path = os.path.join(save_folder, "predictions", option)
+                path = os.path.join(base_path, option)
                 DataUtils.make_path(path)
 
             print_options = DataUtils.print_options_to_array(print_options)
 
-        if "raw" in print_options:
+            
+        if print_options[0]:
             img = PIL.ImageOps.autocontrast(tf.keras.preprocessing.image.array_to_img(pred))
-            img.save(paths["raw"], format="png")
+            img.save(PlotUtils._get_output_save_path(base_path, "raw", name), format="png")
         
-        if "output" in print_options:
+        if print_options[1]:
             img = np.array(np.argmax(pred, axis=-1), dtype="uint8")
             img = np.expand_dims((img == 1).astype("uint8") * 100 + (img == 2).astype("uint8") * 255, axis=-1)
             img = tf.keras.preprocessing.image.array_to_img(img, scale=False)
-            img.save(paths["output"], format="png")
+            img.save(PlotUtils._get_output_save_path(base_path, "output", name), format="png")
         
-        if "input" in print_options and input_img_path != "":
-            img = tf.keras.preprocessing.image.load_img(
-                input_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest"
-            )
-        if print_options[3]:
-            img.save(paths["input"], format="png")
+        if input_img_path != "":
+            if print_options[2]:
+                img = tf.keras.preprocessing.image.load_img(input_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest")
+                img.save(PlotUtils._get_output_save_path(base_path, "input", name), format="png")
         
-        if "input-original" in print_options and input_img_path != "":
-            img = tf.keras.preprocessing.image.load_img(input_img_path)
-            img.save(paths["input-original"], format="png")
+            if print_options[3]:
+                img = tf.keras.preprocessing.image.load_img(input_img_path)
+                img.save(PlotUtils._get_output_save_path(base_path, "input-original", name), format="png")
+
+
+        if target_img_path != "":
+            if print_options[4]:
+                img = tf.keras.preprocessing.image.load_img(target_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest")
+                img.save(PlotUtils._get_output_save_path(base_path, "gt", name), format="png")
+            
+            if print_options[5]:
+                img = tf.keras.preprocessing.image.load_img(target_img_path)
+                img.save(PlotUtils._get_output_save_path(base_path, "gt-original", name), format="png")
         
-        if "gt" in print_options and target_img_path != "":
-            img = tf.keras.preprocessing.image.load_img(
-                target_img_path, color_mode="grayscale", target_size=pred.shape, interpolation="nearest"
-            )
-            img.save(paths["gt"], format="png")
-        
-        if "gt-original" in print_options and target_img_path != "":
-            img = tf.keras.preprocessing.image.load_img(target_img_path)
-            img.save(paths["gt-original"], format="png")
-        
-        if "channels" in print_options and x is not None:
+
+        if print_options[6] and x is not None:
             multi = tf.unstack(tf.unstack(x)[0], axis=-1)
             multi_img = [tf.keras.preprocessing.image.array_to_img(np.expand_dims(frame_i, axis=-1)) for frame_i in multi]
             for (i, img_i) in enumerate(multi_img):
@@ -735,7 +749,7 @@ class PlotUtils:
                 while len(si) < 3:
                     si = "0" + si
 
-                img_i.save( "".join([paths["channels"][:], si]), format="png" )
+                img_i.save(PlotUtils._get_output_save_path(base_path, "channels", name, si), format="png" )
 
         return
 
