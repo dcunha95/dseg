@@ -360,9 +360,13 @@ class DataUtils:
         res[["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results_primary.tex")
         res[["L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]].to_latex(save_folder + "/results_secondary.tex")
 
+    @staticmethod
+    def print_options_to_array(print_options):
         """Transforms a list of print options to optimized array"""
 
         all_options = ["raw", "output", "input", "input_original", "gt", "gt_original", "channels", "contour"]
+        return [option_i in print_options for option_i in all_options]
+
 
 class TrainingUtils:
     """
