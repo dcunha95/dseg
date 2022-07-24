@@ -776,19 +776,20 @@ class PlotUtils:
                 # ground-truth contour
                 gt_array = tf.keras.preprocessing.image.load_img(target_img_path, color_mode="grayscale", target_size=image_size, interpolation="nearest")
                 gt_array = tf.keras.preprocessing.image.img_to_array(gt_array)
+                gt_array = np.squeeze(gt_array)
                 gt_contours = PlotUtils._get_contours(gt_array)
                 for i in gt_contours:
                     for j in i:
-                        img[j[0], j[1], :] = [255, 150, 0]
+                        img[round(j[0]), round(j[1]), :] = [255, 150, 0]
 
 
-            # predictions contour
+            # predictions contour            
             pred_array = np.array(np.argmax(pred, axis=-1), dtype="uint8")
-            pred_array = (img == 1).astype("uint8") * 100 + (img == 2).astype("uint8") * 255
+            pred_array = (pred_array == 1).astype("uint8") * 100 + (pred_array == 2).astype("uint8") * 255
             pred_contours = PlotUtils._get_contours(pred_array)
             for i in pred_contours:
                 for j in i:
-                    img[j[0], j[1], :] = [0, 150, 255]
+                    img[round(j[0]), round(j[1]), :] = [0, 150, 255]
 
             img = tf.keras.preprocessing.image.array_to_img(img)
             img.save(PlotUtils._get_output_save_path(base_path, "contour", name), format="png")
