@@ -738,6 +738,14 @@ class PlotUtils:
 
         return ski.measure.find_contours(array, level=level)
         
+    @staticmethod
+    def _paint(array, coordinates, color=[255,0,0], width=1):
+
+        x = round(coordinates[0])
+        y = round(coordinates[1])
+
+        array[x-width:x+width+1, y-width:y+width+1, :] = color
+
 
     @staticmethod
     def save_output(
@@ -819,7 +827,9 @@ class PlotUtils:
                 gt_contours = PlotUtils._get_contours(gt_array)
                 for i in gt_contours:
                     for j in i:
+                        PlotUtils._paint(img, j, [255, 150, 0], width=1)
                         img[round(j[0]), round(j[1]), :] = [255, 150, 0]
+                        
 
 
             # predictions contour            
@@ -828,8 +838,8 @@ class PlotUtils:
             pred_contours = PlotUtils._get_contours(pred_array)
             for i in pred_contours:
                 for j in i:
-                    img[round(j[0]), round(j[1]), :] = [0, 150, 255]
-
+                    PlotUtils._paint(img, j, [0, 150, 255], width=1)
+                    
             img = tf.keras.preprocessing.image.array_to_img(img)
             img.save(PlotUtils._get_output_save_path(base_path, "contour", name), format="png")
 
