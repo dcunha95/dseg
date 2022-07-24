@@ -7,6 +7,7 @@ import seaborn as sns
 import numpy as np
 import skimage as ski 
 from scipy.spatial.distance import directed_hausdorff
+from itertools import product
 
 import PIL
 from PIL import ImageOps
@@ -359,7 +360,14 @@ class DataUtils:
 
         res[["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results_primary.tex")
         res[["L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]].to_latex(save_folder + "/results_secondary.tex")
-        # res[["Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]",]].to_latex(save_folder + "/results_hausdorf.tex")
+        
+        analysis["data_info_formatted"][["Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]"]].to_latex(save_folder + "/results_hausdorf.tex")
+
+        raw_columns2 = ["Average", "Lumen", "Plaque", "Vessel", "Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]", "PB. Ratio"]
+        raw_mod_columns2 = [("IoU", "Average"), *product(["IoU", "Hausdorf Distance [mm]"], ["Lumen", "Plaque", "Vessel"]), ("", "PB. Ratio")]
+        raw2 = analysis["data_formatted"][raw_columns2]
+        raw2.columns = pd.MultiIndex.from_tuples(raw_mod_columns2)
+        raw2.to_latex(save_folder + "/results2.tex")
 
 
 
@@ -386,6 +394,7 @@ class TrainingUtils:
     @staticmethod
     def hausdorf_distance(u, v) -> float:
         """Returns Hausdorf distance"""
+
         return max(directed_hausdorff(u, v)[0], directed_hausdorff(v, u)[0])
 
     @staticmethod
@@ -654,14 +663,14 @@ class TrainingUtils:
         iou_avg = (iou_l + iou_p) / 2
 
         # lumen hausdorf distance
-        pred_l_contour = PlotUtils._get_contours(pred_l)
-        gt_l_contour = PlotUtils._get_contours(gt_l)
+        pred_l_contour = PlotUtils._get_contours(pred_l)[0]
+        gt_l_contour = PlotUtils._get_contours(gt_l)[0]
 
         hd_l = TrainingUtils.hausdorf_distance(pred_l_contour, gt_l_contour)
 
         # vessel hausdorf distance
-        pred_v_contour = PlotUtils._get_contours(pred_v)     
-        gt_v_contour = PlotUtils._get_contours(gt_v)
+        pred_v_contour = PlotUtils._get_contours(pred_v)[0]
+        gt_v_contour = PlotUtils._get_contours(gt_v)[0]
         
         hd_v = TrainingUtils.hausdorf_distance(pred_v_contour, gt_v_contour)
 
@@ -678,9 +687,9 @@ class TrainingUtils:
             iou_l,
             iou_p,
             iou_v,
-            # hd_l,
-            # hd_p,
-            # hd_v,
+            hd_l,
+            hd_p,
+            hd_v,
             area_pred_l,
             area_gt_l,
             area_pred_p,
