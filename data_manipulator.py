@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import skimage as ski 
-import scipy as scp
+from scipy.spatial.distance import directed_hausdorff
 
 import PIL
 from PIL import ImageOps
@@ -341,8 +341,7 @@ class DataUtils:
 
         save_folder = os.path.join(path, "latex")
 
-        if not os.path.exists(save_folder):
-            os.makedirs(save_folder)
+        DataUtils.make_path(save_folder)
 
         raw_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
         raw_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
@@ -360,6 +359,9 @@ class DataUtils:
 
         res[["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results_primary.tex")
         res[["L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]].to_latex(save_folder + "/results_secondary.tex")
+        # res[["Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]",]].to_latex(save_folder + "/results_hausdorf.tex")
+
+
 
     @staticmethod
     def print_options_to_array(print_options):
@@ -380,6 +382,11 @@ class TrainingUtils:
         inter = np.count_nonzero(np.logical_and(y_pred, y_true).astype("uint8"))
         union = np.count_nonzero(np.logical_or(y_pred, y_true).astype("uint8"))
         return inter / union
+
+    @staticmethod
+    def hausdorf_distance(u, v) -> float:
+        """Returns Hausdorf distance"""
+        return max(directed_hausdorff(u, v)[0], directed_hausdorff(v, u)[0])
 
     @staticmethod
     def dice(y_pred, y_true) -> float:
@@ -646,10 +653,24 @@ class TrainingUtils:
         # average iou between plaque and lumen
         iou_avg = (iou_l + iou_p) / 2
 
-        # hausdorf distance
-        hd = None
-        pred_contour = PlotUtils._get_contours(pred)
-        gt_contour = PlotUtils._get_contours(gt)
+        # lumen hausdorf distance
+        pred_l_contour = PlotUtils._get_contours(pred_l)
+        gt_l_contour = PlotUtils._get_contours(gt_l)
+
+        hd_l = TrainingUtils.hausdorf_distance(pred_l_contour, gt_l_contour)
+
+        # vessel hausdorf distance
+        pred_v_contour = PlotUtils._get_contours(pred_v)     
+        gt_v_contour = PlotUtils._get_contours(gt_v)
+        
+        hd_v = TrainingUtils.hausdorf_distance(pred_v_contour, gt_v_contour)
+
+        # convert to mm
+        hd_l = hd_l*10/prediction.shape[1]
+        hd_v = hd_v*10/prediction.shape[1]
+
+        # plaque hausdorf distance
+        hd_p = max(hd_l, hd_v)
 
         metrics = [
             iou_avg,
@@ -657,7 +678,9 @@ class TrainingUtils:
             iou_l,
             iou_p,
             iou_v,
-            # hd,
+            # hd_l,
+            # hd_p,
+            # hd_v,
             area_pred_l,
             area_gt_l,
             area_pred_p,
