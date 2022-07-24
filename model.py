@@ -607,11 +607,10 @@ class Model:
         if ref_data is None:
             ref_data = self.__stt_dataset
 
-        if not os.path.exists(save_folder):
-            os.makedirs(save_folder)
+        DataUtils.make_path(save_folder)
 
-        if not os.path.exists(save_folder + "/predictions"):
-            os.makedirs(save_folder + "/predictions")
+        # if not os.path.exists(save_folder + "/predictions"):
+        #     os.makedirs(save_folder + "/predictions")
 
         # get available columns
         dataset = ref_data.copy()
@@ -694,6 +693,7 @@ class Model:
                 "Lumen",
                 "Plaque",
                 "Vessel",
+                # "Hausdorf Distance",
                 "Lumen Area [mm²]",
                 "Lumen Area GT [mm²]",
                 "Plaque Area [mm²]",

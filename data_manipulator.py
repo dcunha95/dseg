@@ -6,6 +6,7 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import skimage as ski 
+import scipy as scp
 
 import PIL
 from PIL import ImageOps
@@ -645,12 +646,18 @@ class TrainingUtils:
         # average iou between plaque and lumen
         iou_avg = (iou_l + iou_p) / 2
 
+        # hausdorf distance
+        hd = None
+        pred_contour = PlotUtils._get_contours(pred)
+        gt_contour = PlotUtils._get_contours(gt)
+
         metrics = [
             iou_avg,
             iou_e,
             iou_l,
             iou_p,
             iou_v,
+            # hd,
             area_pred_l,
             area_gt_l,
             area_pred_p,
@@ -694,10 +701,10 @@ class PlotUtils:
             return "".join([os.path.join(base_path, option, name), "_", option, ".png"])
 
     @staticmethod
-    def _get_contours(array):
+    def _get_contours(array, level=None):
         """Return contours"""
 
-        return ski.measure.find_contours(array)
+        return ski.measure.find_contours(array, level=level)
         
 
     @staticmethod
