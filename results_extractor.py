@@ -182,7 +182,7 @@ class Extractor:
         return training
 
     @staticmethod
-    def id_last_training_results_path(id_path):
+    def id_last_training_results_path(id_path, base_name="ivus"):
         """Finds and returns the path of the last training executed in an ID: ivus_0, ivus_1, ivus_2 etc."""
 
         dir = os.listdir(id_path)
@@ -191,7 +191,7 @@ class Extractor:
         n = 0
         last_training = -1
         while not_break:
-            find = "ivus_" + str(n)
+            find = base_name + "_" + str(n)
 
             if find in dir:
                 n += 1
