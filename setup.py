@@ -6,7 +6,7 @@ class PipelineConfig:
         self,
         split=[0.6, 0.2, 0.2],
         dataset_percent=0.1,
-        print_options=["raw", "output", "input", "input-original", "gt", "gt-original", "channels", "contour"],
+        print_options=["raw", "output", "input", "input-original", "gt", "gt-original", "channels", "contour", "3d"],
         name_format=["Average", "Name"],
         **kwargs,
     ):

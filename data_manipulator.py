@@ -30,6 +30,22 @@ class DataUtils:
         except Exception as exception:
             raise(exception)
 
+    @staticmethod
+    def simple_counter(i, total):
+        """Prints simple counter """
+
+        if i+1 == total:
+            end = "\n"
+        else:
+            end = ""
+
+        s_i = str(i+1)
+        s_total = str(total)
+        while len(s_i) < len(s_total):
+            s_i = "".join(["0", s_i])
+
+        print("".join(["\r", s_i, " / ", s_total]), end=end)
+        pass
 
     # one at a time
     @staticmethod
@@ -375,7 +391,7 @@ class DataUtils:
     def print_options_to_array(print_options):
         """Transforms a list of print options to optimized array"""
 
-        all_options = ["raw", "output", "input", "input_original", "gt", "gt_original", "channels", "contour"]
+        all_options = ["raw", "output", "input", "input_original", "gt", "gt_original", "channels", "contour", "3d"]
         return [option_i in print_options for option_i in all_options]
 
 
@@ -754,9 +770,10 @@ class PlotUtils:
         save_folder: str,
         input_img_path: str = "",
         target_img_path: str = "",
-        print_options: list = [True, True, True, True, True, True, True, True],
+        print_options: list = [True, True, True, True, True, True, True, True, True],
         image_size=(512, 512),
         x = None,
+        channels=1,
     ):
         """Saves output"""
 
@@ -829,7 +846,6 @@ class PlotUtils:
                     for j in i:
                         PlotUtils._paint(img, j, [255, 150, 0], width=1)
                         img[round(j[0]), round(j[1]), :] = [255, 150, 0]
-                        
 
 
             # predictions contour            
@@ -842,6 +858,14 @@ class PlotUtils:
                     
             img = tf.keras.preprocessing.image.array_to_img(img)
             img.save(PlotUtils._get_output_save_path(base_path, "contour", name), format="png")
+
+        # if channels != 1 and print_options[8]:
+        if print_options[8]:
+            img = tf.stack([x[:, :, :, 0], x[:, :, :, int((channels-1)/2)], x[:, :, :, -1]], axis=-1)
+            img = tf.keras.preprocessing.image.array_to_img(img[0])
+
+            img.save(PlotUtils._get_output_save_path(base_path, "3d", name), format="png")
+
 
         return
 

@@ -430,7 +430,7 @@ class Model:
         amount = len(gen)
         for (i, x) in enumerate(gen):
             if verbose == 1:
-                print(str(i + 1) + " / " + str(amount))
+                DataUtils.simple_counter(i, amount)
 
             pred = self.__model.predict(x)
 
@@ -657,9 +657,8 @@ class Model:
         stats_list = [None for k in range(amount)]
         for (i, (x, y)) in enumerate(gen):
 
-            if verbose == 1:
-                print(str(i + 1) + " / " + str(amount))
-
+            DataUtils.simple_counter(i, amount)
+            
             pred = self.__model.predict(x)
 
             if self.setup.net_config.multi_output:
