@@ -1348,11 +1348,16 @@ class PlotUtils:
             markers = ["o" for i in df["Class"].nunique()]
 
             graph = sns.scatterplot(data=df, x='data_point', y='Value', markers=markers, alpha=0.85, edgecolor=None)
-            self._set_ylim(graph, metric)
-            graph.set(ylabel=metric)
             
-            graph.set( xlim=(0, len(df)/len(markers)) )
-            graph.set( xlabel='Predictions' )
+            self._set_ylim(graph, metric)
+            
+            graph.tick_params(left=True, bottom=False)
 
+            graph.set(
+                ylabel=metric,
+                xlim=(0, len(df)/len(markers)),
+                xlabel='Predictions',
+            )
+            
             return graph
 
