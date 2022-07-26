@@ -741,7 +741,7 @@ class Model:
         PlotUtils.save_plots(
             data=self.analysis["data"],
             data_info=self.analysis["data_info"],
-            save_folder=self.model_name,
+            save_folder=save_folder,
             dpi=400,
             ci=None,
         )
