@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
+from typing import Union
+from itertools import product
+
+
 import tensorflow as tf
 import pandas as pd
 import seaborn as sns
-import os
-from typing import Union
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -390,6 +393,10 @@ class Model:
             "Name": "file_name",
             "iou_avg": "iou_avg",
             "Average": "iou_avg",
+
+            ("Path", "File Name"): "file_name",
+            ("Path", "Input Image"): "raw_path",
+            ("Path", "Ground Truth"): "mask_path",
         }
 
         cols = []
@@ -623,6 +630,10 @@ class Model:
             "Name": "file_name",
             "iou_avg": "iou_avg",
             "Average": "iou_avg",
+            
+            ("Path", "File Name"): "file_name",
+            ("Path", "Input Image"): "raw_path",
+            ("Path", "Ground Truth"): "mask_path",
         }
 
         cols = []
@@ -686,37 +697,16 @@ class Model:
 
         data = pd.DataFrame(
             np.array(stats_list, dtype="float32"),
-            columns=[
-                "Average",
-                "Outer",
-                "Lumen",
-                "Plaque",
-                "Vessel",
-                "Lumen HD [mm]",
-                "Plaque HD [mm]",
-                "Vessel HD [mm]",
-                "Lumen Area [mm²]",
-                "Lumen Area GT [mm²]",
-                "Plaque Area [mm²]",
-                "Plaque Area GT [mm²]",
-                "Vessel Area [mm²]",
-                "Vessel Area GT [mm²]",
-            ],
         )
 
-        # More metrics
-        data["Lumen Area Ratio"] = data["Lumen Area [mm²]"] / data["Lumen Area GT [mm²]"]
-        data["Plaque Area Ratio"] = data["Plaque Area [mm²]"] / data["Plaque Area GT [mm²]"]
-        data["Vessel Area Ratio"] = data["Vessel Area [mm²]"] / data["Vessel Area GT [mm²]"]
-
-        # A single image has 100mm2
-        data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"] = 100 * data.loc[:, "Lumen Area [mm²]":"Vessel Area GT [mm²]"]
-
-        # Even more
-        data["Plaque Burden"] = data["Plaque Area [mm²]"] / data["Vessel Area [mm²]"]
-        data["Plaque Burden GT"] = data["Plaque Area GT [mm²]"] / data["Vessel Area GT [mm²]"]
-
-        data["PB. Ratio"] = data["Plaque Burden"] / data["Plaque Burden GT"]
+        data.columns = pd.MultiIndex.from_tuples([
+                *product(["IoU", "DICE"], ["Average", "Outer", "Lumen", "Plaque", "Vessel",]),
+                *product(["Hausdorf Distance [mm]"], ["Lumen", "Plaque", "Vessel",]),
+                *product(["Area [mm²]"], ["Lumen", "Lumen GT", "Plaque", "Plaque GT", "Vessel", "Vessel GT",])
+                *product(["Area Ratio"], ["Lumen", "Plaque", "Vessel",])
+                *product(["Plaque Burden"], ["Prediction", "Ground Truth", "Ratio",])
+                ],
+            )
 
         data_info = data.describe()
         data_info.loc["IQR"] = data_info.loc["75%"] - data_info.loc["25%"]

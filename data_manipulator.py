@@ -308,7 +308,7 @@ class DataUtils:
         data: pd.DataFrame,
         data_info: pd.DataFrame,
         dataset,
-        sorting_metric="Average",
+        sorting_metric=("IoU", "Average"),
     ):
         """
         Formats data and data_info.
@@ -343,9 +343,10 @@ class DataUtils:
         #         x: x[:-4]
         #     )
 
-        dataf["Input Image"] = dataset.set_index(np.arange(len(dataset))).raw_path
-        dataf["Ground Truth"] = dataset.set_index(np.arange(len(dataset))).mask_path
-
+        dataf[("Path", "File Name")] = dataset.set_index(np.arange(len(dataset))).file_name
+        dataf[("Path", "Input Image")] = dataset.set_index(np.arange(len(dataset))).raw_path
+        dataf[("Path", "Ground Truth")] = dataset.set_index(np.arange(len(dataset))).mask_path
+        
         data_sorted = dataf.sort_values(by=sorting_metric)
 
         # data_sorted.to_csv(save_folder + "/metrics_sorted.csv")
@@ -394,6 +395,20 @@ class DataUtils:
         all_options = ["raw", "output", "input", "input_original", "gt", "gt_original", "channels", "contour", "3d"]
         return [option_i in print_options for option_i in all_options]
 
+    @staticmethod
+    def divide_no_nan(a, b):
+        """Calculates a/b and returns NaNs as zeros, also returning inf or -inf if b == 0"""
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            c = np.divide(a, b)
+
+        if np.isnan(c):
+            return 0
+        else:
+            return c
+
+
+
 
 class TrainingUtils:
     """
@@ -416,10 +431,14 @@ class TrainingUtils:
     @staticmethod
     def dice(y_pred, y_true) -> float:
         """Returns DICE (Sørensen-Dice Index)"""
+        # inter = np.count_nonzero(np.logical_and(y_pred, y_true).astype("uint8"))
+        # x = np.count_nonzero(y_pred.astype("uint8"))
+        # y = np.count_nonzero(y_true.astype("uint8"))
+        # return inter / (x + y)
         inter = np.count_nonzero(np.logical_and(y_pred, y_true).astype("uint8"))
-        x = np.count_nonzero(y_pred.astype("uint8"))
-        y = np.count_nonzero(y_true.astype("uint8"))
-        return inter / (x + y)
+        union = np.count_nonzero(np.logical_or(y_pred, y_true).astype("uint8"))
+        return 2*inter / (union+inter)
+
 
     @staticmethod
     @tf.function
@@ -655,16 +674,19 @@ class TrainingUtils:
         gt_p = (gt == 255).astype("uint8")
         gt_v = gt_l + gt_p
 
-        # area
+
+        # Calculating Areas (100mm^2 * class_pixels/total_pixels)
+
         tot_area = prediction.shape[1] ** 2
 
-        area_pred_l = np.count_nonzero(pred_l) / tot_area
-        area_pred_p = np.count_nonzero(pred_p) / tot_area
-        area_pred_v = np.count_nonzero(pred_v) / tot_area
+        area_pred_l = 100*np.count_nonzero(pred_l) / tot_area
+        area_pred_p = 100*np.count_nonzero(pred_p) / tot_area
+        area_pred_v = 100*np.count_nonzero(pred_v) / tot_area
 
-        area_gt_l = np.count_nonzero(gt_l) / tot_area
-        area_gt_p = np.count_nonzero(gt_p) / tot_area
-        area_gt_v = np.count_nonzero(gt_v) / tot_area
+        area_gt_l = 100*np.count_nonzero(gt_l) / tot_area
+        area_gt_p = 100*np.count_nonzero(gt_p) / tot_area
+        area_gt_v = 100*np.count_nonzero(gt_v) / tot_area
+
 
         # Calculating IoUs
 
@@ -677,6 +699,22 @@ class TrainingUtils:
 
         # average iou between plaque and lumen
         iou_avg = (iou_l + iou_p) / 2
+
+
+        # Calculating DICEs
+
+        # external, lumen, plaque and vessel
+        # (vessel = lumen + plaque)
+        dice_e = TrainingUtils.dice(pred_e, gt_e)
+        dice_l = TrainingUtils.dice(pred_l, gt_l)
+        dice_p = TrainingUtils.dice(pred_p, gt_p)
+        dice_v = TrainingUtils.dice(pred_v, gt_v)
+
+        # average dice between plaque and lumen
+        dice_avg = (dice_l + dice_p) / 2
+
+
+        # Calculating Hausdorf Distances
 
         # lumen hausdorf distance
         pred_l_contour = PlotUtils._get_contours(pred_l)[0]
@@ -697,21 +735,58 @@ class TrainingUtils:
         # plaque hausdorf distance
         hd_p = max(hd_l, hd_v)
 
+
+        # Calculating Area Ratios
+
+        ratio_l = DataUtils.divide_no_nan(area_pred_l, area_gt_l)
+        ratio_p = DataUtils.divide_no_nan(area_pred_p, area_gt_p)
+        ratio_v = DataUtils.divide_no_nan(area_pred_v, area_gt_v)
+
+
+        # Calculating Plaque Burden
+
+        pb_pred = DataUtils.divide_no_nan(area_pred_p, area_pred_v)
+        pb_gt = DataUtils.divide_no_nan(area_gt_p, area_gt_v)
+        pb_ratio = DataUtils.divide_no_nan(pb_pred, pb_gt)
+
+
         metrics = [
+            # iou
             iou_avg,
             iou_e,
             iou_l,
             iou_p,
             iou_v,
+            
+            # dice
+            dice_avg,
+            dice_e,
+            dice_l,
+            dice_p,
+            dice_v,
+            
+            # hausdorf
             hd_l,
             hd_p,
             hd_v,
+
+            # area
             area_pred_l,
             area_gt_l,
             area_pred_p,
             area_gt_p,
             area_pred_v,
             area_gt_v,
+
+            # area ratio (prediction / ground truth)
+            ratio_l,
+            ratio_p,
+            ratio_v,
+
+            # plaque burden
+            pb_pred, 
+            pb_gt,
+            pb_ratio,
         ]
 
         return metrics
@@ -959,7 +1034,126 @@ class PlotUtils:
         ci=None,
     ):
         """
-        Make plots.
+        Makes a bunch of plots at save_folder/plots.
+
+        :param data:
+        :param data_info:
+        :param save_folder:
+        :param dpi:
+        :param ci:
+        :return:
+        """
+
+        plots_folder = save_folder + "/plots"
+        if not os.path.exists(plots_folder):
+            os.makedirs(plots_folder)
+
+        # no mean
+        for bw in ["scott", 0.01, 0.1, 0.2]:
+            graph = sns.violinplot(data=data.loc[:, "Lumen":"Vessel"], saturation=0.9, bw=bw, gridsize=400, cut=0)
+            graph.set(ylim=(0, 1.03))
+            graph.get_figure().savefig(plots_folder + "/iou_violin_bw_" + str(bw) + ".png", format="png", dpi=dpi)
+            graph.get_figure().clf()
+
+        graph = sns.boxplot(data=data.loc[:, "Lumen":"Vessel"], saturation=0.9)
+        graph.set(ylim=(0, 1.03))
+        graph.get_figure().savefig(plots_folder + "/iou_box.png", format="png", dpi=dpi)
+        graph.get_figure().clf()
+
+        graph = sns.scatterplot(data=data.loc[:, "Lumen":"Vessel"], markers=["o", "o", "o"], alpha=0.85, edgecolor=None)
+        graph.set(xlim=(0, len(data)), ylim=(0, 1.03))
+        graph.get_figure().savefig(save_folder + "/plots" + "/iou_scatter.png", format="png", dpi=dpi)
+        graph.get_figure().clf()
+
+        # with mean
+        idx = pd.IndexSlice
+        iou_cols = idx["Lumen", "Plaque", "Vessel", "Average"]
+
+        for bw in ["scott", 0.01, 0.1, 0.2]:
+            graph = sns.violinplot(data=data.loc[:, iou_cols], saturation=0.9, bw=bw, gridsize=400, cut=0)
+            graph.set(ylim=(0, 1.03))
+            graph.get_figure().savefig(plots_folder + "/iou_violin_bw_" + str(bw) + "_avg.png", format="png", dpi=dpi)
+            graph.get_figure().clf()
+
+        graph = sns.boxplot(data=data.loc[:, iou_cols], saturation=0.9)
+        graph.set(ylim=(0, 1.03))
+        graph.get_figure().savefig(plots_folder + "/iou_box_avg.png", format="png", dpi=dpi)
+        graph.get_figure().clf()
+
+        graph = sns.scatterplot(data=data.loc[:, "Average"], markers=["o"], alpha=0.85, edgecolor=None)
+        graph.set(ylim=(0, 1.03))
+        graph.set(xlim=(0, len(data)), ylim=(0, 1.03))
+        graph.get_figure().savefig(save_folder + "/plots" + "/iou_scatter_avg.png", format="png", dpi=dpi)
+        graph.get_figure().clf()
+
+        PlotUtils.ratio_plots(
+            name="Lumen Area [mm²]",
+            gt_name="Lumen Area GT [mm²]",
+            ratio_name="Lumen Area Ratio",
+            file_name="area_lumen",
+            data=data,
+            data_info=data_info,
+            plots_folder=plots_folder,
+        )
+        PlotUtils.ratio_plots(
+            name="Plaque Area [mm²]",
+            gt_name="Plaque Area GT [mm²]",
+            ratio_name="Plaque Area Ratio",
+            file_name="area_plaque",
+            data=data,
+            data_info=data_info,
+            plots_folder=plots_folder,
+        )
+        PlotUtils.ratio_plots(
+            name="Vessel Area [mm²]",
+            gt_name="Vessel Area GT [mm²]",
+            ratio_name="Vessel Area Ratio",
+            file_name="area_vessel",
+            data=data,
+            data_info=data_info,
+            plots_folder=plots_folder,
+        )
+
+        PlotUtils.ratio_plots(
+            name="Plaque Area [mm²]",
+            gt_name="Vessel Area [mm²]",
+            ratio_name="Plaque Burden",
+            file_name="plaque_burden",
+            data=data,
+            data_info=data_info,
+            plots_folder=plots_folder,
+        )
+        PlotUtils.ratio_plots(
+            name="Plaque Area GT [mm²]",
+            gt_name="Vessel Area GT [mm²]",
+            ratio_name="Plaque Burden GT",
+            file_name="plaque_burden_gt",
+            data=data,
+            data_info=data_info,
+            plots_folder=plots_folder,
+        )
+        PlotUtils.ratio_plots(
+            name="Plaque Burden",
+            gt_name="Plaque Burden GT",
+            ratio_name="PB. Ratio",
+            file_name="plaque_burden_model_gt_comparison",
+            data=data,
+            data_info=data_info,
+            plots_folder=plots_folder,
+        )
+
+        return
+    
+    @staticmethod
+    def save_plots2(
+        data,
+        data_info,
+        save_folder,
+        dpi=400,
+        ci=None,
+    ):
+        """
+        Makes a bunch of plots at save_folder/plots.
 
         :param data:
         :param data_info:
