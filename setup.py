@@ -138,6 +138,8 @@ class Setup:
         fit_config=None,
         tf_config=None,
         model_from_file=None,
+        base_training_info=None,
+        notes="",
         **kwargs,
     ):
 
@@ -158,9 +160,12 @@ class Setup:
         self.fit_config = fit_config
         self.tf_config = tf_config
         
-        self.model_from_file = model_from_file
-
         self.model_properties = {}
+        
+        self.model_from_file = model_from_file
+        self.base_training_info = base_training_info
+        self.notes = notes
+
 
     @property
     def to_dict(self):
@@ -189,7 +194,17 @@ class Setup:
             sl.append("\n\n")
         
         sl.append("".join(["model_from_file: ", str(d["model_from_file"])]))
+        sl.append("".join(["\nbase_training_info: ", str(d["base_training_info"])]))
+        sl.append("".join(["\nnotes: ", str(d["notes"])]))
+        
         return "".join(sl)
+
+    def __eq__(self, other):
+
+        if self.__class__ == other.__class__:
+            return self.to_dict == other.to_dict
+        else:
+            return False
 
     @staticmethod
     def from_dict(d):
@@ -198,7 +213,10 @@ class Setup:
         net_config = NetConfig(**d["net_config"]) 
         fit_config = FitConfig(**d["fit_config"]) 
         tf_config = TensorFlowConfig(**d["tf_config"])
+        
         model_from_file = d["model_from_file"]
+        base_training_info = d['base_training_info']
+        notes = d['notes']
 
         setup = Setup(
             pipeline_config=pipeline_config, 
@@ -206,6 +224,8 @@ class Setup:
             fit_config=fit_config, 
             tf_config=tf_config,
             model_from_file=model_from_file,
+            base_training_info=base_training_info,
+            notes=notes,
         )
         
         setup.model_properties = d["model_properties"]

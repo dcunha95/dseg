@@ -35,11 +35,6 @@ class DataUtils:
     def simple_counter(i, total):
         """Prints simple counter """
 
-        if i+1 == total:
-            end = "\n"
-        else:
-            end = ""
-
         flourish= ['\\', '|', '/', '-']
 
         s_i = str(i+1)
@@ -47,8 +42,10 @@ class DataUtils:
         while len(s_i) < len(s_total):
             s_i = "".join(["0", s_i])
 
-        print("".join(["\r", s_i, " / ", s_total, '  ', flourish[(i+1) % 4]]), end=end)
-        pass
+        if i+1 == total:
+            print("".join(["\r", s_i, " / ", s_total]), end='\n')
+        else:
+            print("".join(["\r", s_i, " / ", s_total, '  ', flourish[(i+1) % 4]]), end='')
 
     # one at a time
     @staticmethod
