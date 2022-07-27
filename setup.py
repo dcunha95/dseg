@@ -208,15 +208,41 @@ class Setup:
 
     @staticmethod
     def from_dict(d):
-
-        pipeline_config = PipelineConfig(**d["pipeline_config"]) 
-        net_config = NetConfig(**d["net_config"]) 
-        fit_config = FitConfig(**d["fit_config"]) 
-        tf_config = TensorFlowConfig(**d["tf_config"])
         
-        model_from_file = d["model_from_file"]
-        base_training_info = d['base_training_info']
-        notes = d['notes']
+        if 'pipeline_config' in d:
+            pipeline_config = PipelineConfig(**d["pipeline_config"]) 
+        else:
+            pipeline_config = None
+
+        if 'net_config' in d:
+            net_config = NetConfig(**d["net_config"]) 
+        else:
+            net_config = None
+
+        if 'fit_config' in d:
+            fit_config = FitConfig(**d["fit_config"]) 
+        else:
+            fit_config = None
+
+        if 'tf_config' in d:
+            tf_config = TensorFlowConfig(**d["tf_config"]) 
+        else:
+            tf_config = None
+
+        if "model_from_file" in d:
+            model_from_file = d["model_from_file"]
+        else:
+            model_from_file = None
+        
+        if "base_training_info" in d:
+            base_training_info = d['base_training_info']
+        else:
+            base_training_info = None
+        
+        if "base_training_info" in d:
+            notes = d['notes']
+        else:
+            notes = ""
 
         setup = Setup(
             pipeline_config=pipeline_config, 
@@ -228,7 +254,8 @@ class Setup:
             notes=notes,
         )
         
-        setup.model_properties = d["model_properties"]
+        if "model_properties" in d:
+            setup.model_properties = d["model_properties"]
  
         return setup
 
