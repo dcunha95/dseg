@@ -755,15 +755,14 @@ class Model:
             metric_name = metric_i.lower().replace(' [mm]', '').replace(' ', '_')
 
             graph = plotter.violin(data, metric_i)
-            graph.get_figure().savefig(os.path.join(plots_folder, f'violin_{metric_name}.png'), dpi=dpi)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'violin_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
 
             graph = plotter.scatter(data, metric_i)
-            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}.png'), dpi=dpi)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
 
             if metric_i in ["DICE", "IoU"]:
                 graph = plotter.scatter(data, metric_i, use_average=True)
-                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}_avg.png'), dpi=dpi)
-
+                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
 
         self.__analysed = True
 
