@@ -1361,7 +1361,7 @@ class GraphMaker:
         self._set_ylim(graph, metric)
         
         graph.tick_params(left=True, bottom=False)
-
+        graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=metric,
             xlim=(0, len(df)/len(markers)),

@@ -740,7 +740,7 @@ class Model:
         # )
 
         # Graph maker
-        dpi = 700
+        dpi = 250
         figure_args = {
             "figsize": (4*19.20/5, 4*10.80/5),
             "dpi": dpi,
