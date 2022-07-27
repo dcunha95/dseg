@@ -441,8 +441,8 @@ class Model:
 
             pred = self.__model.predict(x)
 
-            if i < 1:
-                print("shape: ", np.array(pred).shape)
+            # if i < 1:
+            #     print("shape: ", np.array(pred).shape)
 
             if self.setup.net_config.multi_output:
                 lumen, vessel = pred
@@ -453,11 +453,11 @@ class Model:
 
             for (j, w) in enumerate(pred):
                 name = PlotUtils.pred_name(data, i, 0, name_format=name_format)
-                input_img_path = dataset.iloc[i + j]["raw_path"]
+                input_img_path = dataset.raw_path.iloc[i + j]
 
                 # check if ground truth is available
                 if "mask_path" in dataset.columns:
-                    target_img_path = dataset.iloc[i + j]["mask_path"]
+                    target_img_path = dataset.mask_path.iloc[i + j]
                 else:
                     target_img_path = ""
 

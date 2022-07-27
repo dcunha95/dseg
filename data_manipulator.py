@@ -41,12 +41,14 @@ class DataUtils:
         else:
             end = ""
 
+        flourish= ['\\', '|', '/', '-']
+
         s_i = str(i+1)
         s_total = str(total)
         while len(s_i) < len(s_total):
             s_i = "".join(["0", s_i])
 
-        print("".join(["\r", s_i, " / ", s_total]), end=end)
+        print("".join(["\r", s_i, " / ", s_total, '  ', flourish[(i+1) % 4]]), end=end)
         pass
 
     # one at a time
@@ -338,7 +340,7 @@ class DataUtils:
 
         df = dataset.set_index(np.arange(len(dataset)))
 
-        dataf.insert(0, "Name", df.file_name)
+        # dataf.insert(0, "Name", df.file_name)
 
         # dataf.Name = dataf.Name.apply(
         #     lambda
@@ -362,31 +364,6 @@ class DataUtils:
         save_folder = os.path.join(path, "latex")
 
         DataUtils.make_path(save_folder)
-
-        # raw_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
-        # raw_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
-
-        # res_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
-        # res_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
-
-        # raw = analysis["data_formatted"][raw_columns]
-        # raw.columns = [raw_mod_columns]
-        # raw.to_latex(save_folder + "/results_raw.tex", longtable=True)
-
-        # res = analysis["data_info_formatted"][res_columns]
-        # res.columns = [res_mod_columns]
-        # res.to_latex(save_folder + "/results.tex")
-
-        # res[["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results_primary.tex")
-        # res[["L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]].to_latex(save_folder + "/results_secondary.tex")
-        
-        # analysis["data_info_formatted"][["Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]"]].to_latex(save_folder + "/results_hausdorf.tex")
-
-        # raw_columns2 = ["Average", "Lumen", "Plaque", "Vessel", "Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]", "PB. Ratio"]
-        # raw_mod_columns2 = [("IoU", "Average"), *product(["IoU", "Hausdorf Distance [mm]"], ["Lumen", "Plaque", "Vessel"]), ("", "PB. Ratio")]
-        # raw2 = analysis["data_formatted"][raw_columns2]
-        # raw2.columns = pd.MultiIndex.from_tuples(raw_mod_columns2)
-        # raw2.to_latex(save_folder + "/results2.tex")
 
         metrics = {
             'iou': [*product(["IoU"], ["Average", "Lumen", "Plaque", "Vessel",])],
@@ -819,11 +796,21 @@ class PlotUtils:
     @staticmethod
     def pred_name(data: pd.DataFrame, j, base_j, name_format=["Average", "Name"]):
         """Returns a prediction's file name."""
+        
+        name_to_col = {
+            "Average": ("IoU", "Average"),
+            "Lumen": ("IoU", "Lumen"),
+            "Plaque": ("IoU", "Plaque"),
+            "Vessel": ("IoU", "Lumen"),            
+            "Name": "file_name",
+        }
+        
         name = ""
 
         for i in name_format:
-            if i in data.columns:
-                name += str(data.iloc[j + base_j][i]) + "_"
+            i_col = name_to_col[i]
+            if i_col in data.columns:
+                name += str(data.iloc[j + base_j][i_col]) + "_"
 
         name += str(data.index[base_j + j])
         name = name.replace(".", "")
@@ -833,7 +820,7 @@ class PlotUtils:
     @staticmethod
     def _get_output_save_path(base_path : str, option : str, name:str, kname : str = ""):
         """Get standard save path for an output"""
-        
+
         # base_path = save_folder/predictions
         if kname != "":
             # return save_folder/predictions/option/name_kname_option.png
