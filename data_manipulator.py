@@ -363,30 +363,47 @@ class DataUtils:
 
         DataUtils.make_path(save_folder)
 
-        raw_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
-        raw_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
+        # raw_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
+        # raw_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
 
-        res_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
-        res_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
+        # res_columns = ["Average", "Lumen", "Plaque", "Vessel", "Lumen Area Ratio", "Plaque Area Ratio", "Vessel Area Ratio", "PB. Ratio"]
+        # res_mod_columns = ["Average", "Lumen", "Plaque", "Vessel", "L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]
 
-        raw = analysis["data_formatted"][raw_columns]
-        raw.columns = [raw_mod_columns]
-        raw.to_latex(save_folder + "/results_raw.tex", longtable=True)
+        # raw = analysis["data_formatted"][raw_columns]
+        # raw.columns = [raw_mod_columns]
+        # raw.to_latex(save_folder + "/results_raw.tex", longtable=True)
 
-        res = analysis["data_info_formatted"][res_columns]
-        res.columns = [res_mod_columns]
-        res.to_latex(save_folder + "/results.tex")
+        # res = analysis["data_info_formatted"][res_columns]
+        # res.columns = [res_mod_columns]
+        # res.to_latex(save_folder + "/results.tex")
 
-        res[["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results_primary.tex")
-        res[["L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]].to_latex(save_folder + "/results_secondary.tex")
+        # res[["Average", "Lumen", "Plaque", "Vessel"]].to_latex(save_folder + "/results_primary.tex")
+        # res[["L. Area Ratio", "P. Area Ratio", "V. Area Ratio", "PB. Ratio"]].to_latex(save_folder + "/results_secondary.tex")
         
-        analysis["data_info_formatted"][["Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]"]].to_latex(save_folder + "/results_hausdorf.tex")
+        # analysis["data_info_formatted"][["Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]"]].to_latex(save_folder + "/results_hausdorf.tex")
 
-        raw_columns2 = ["Average", "Lumen", "Plaque", "Vessel", "Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]", "PB. Ratio"]
-        raw_mod_columns2 = [("IoU", "Average"), *product(["IoU", "Hausdorf Distance [mm]"], ["Lumen", "Plaque", "Vessel"]), ("", "PB. Ratio")]
-        raw2 = analysis["data_formatted"][raw_columns2]
-        raw2.columns = pd.MultiIndex.from_tuples(raw_mod_columns2)
-        raw2.to_latex(save_folder + "/results2.tex")
+        # raw_columns2 = ["Average", "Lumen", "Plaque", "Vessel", "Lumen HD [mm]", "Plaque HD [mm]", "Vessel HD [mm]", "PB. Ratio"]
+        # raw_mod_columns2 = [("IoU", "Average"), *product(["IoU", "Hausdorf Distance [mm]"], ["Lumen", "Plaque", "Vessel"]), ("", "PB. Ratio")]
+        # raw2 = analysis["data_formatted"][raw_columns2]
+        # raw2.columns = pd.MultiIndex.from_tuples(raw_mod_columns2)
+        # raw2.to_latex(save_folder + "/results2.tex")
+
+        metrics = {
+            'iou': [*product(["IoU"], ["Average", "Lumen", "Plaque", "Vessel",])],
+            'dice': [*product(["DICE"], ["Average", "Lumen", "Plaque", "Vessel",])],
+            'hd': [*product(["Hausdorf Distance [mm]"], ["Lumen", "Plaque", "Vessel",])],
+            'area': [*product(["Area [mm²]"], ["Lumen", "Lumen GT", "Plaque", "Plaque GT", "Vessel", "Vessel GT",])],
+            'ratio': [*product(["Area Ratio"], ["Lumen", "Plaque", "Vessel",])],
+            'pb': [*product(["Plaque Burden"], ["Prediction", "Ground Truth", "Ratio",])],
+        }
+
+        for metric in metrics:
+            analysis['data_info_formatted'][metrics[metric]].to_latex(os.path.join(save_folder, f'results_{metric}.tex'))
+        
+        analysis['data_info_formatted'].to_latex(os.path.join(save_folder, 'results_all.tex'))
+        analysis['data_info_formatted'].T.to_latex(os.path.join(save_folder, 'results_all_t.tex'))
+
+
 
     @staticmethod
     def print_options_to_array(print_options):

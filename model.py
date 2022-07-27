@@ -702,9 +702,9 @@ class Model:
         data.columns = pd.MultiIndex.from_tuples([
                 *product(["IoU", "DICE"], ["Average", "Outer", "Lumen", "Plaque", "Vessel",]),
                 *product(["Hausdorf Distance [mm]"], ["Lumen", "Plaque", "Vessel",]),
-                *product(["Area [mm²]"], ["Lumen", "Lumen GT", "Plaque", "Plaque GT", "Vessel", "Vessel GT",])
-                *product(["Area Ratio"], ["Lumen", "Plaque", "Vessel",])
-                *product(["Plaque Burden"], ["Prediction", "Ground Truth", "Ratio",])
+                *product(["Area [mm²]"], ["Lumen", "Lumen GT", "Plaque", "Plaque GT", "Vessel", "Vessel GT",]),
+                *product(["Area Ratio"], ["Lumen", "Plaque", "Vessel",]),
+                *product(["Plaque Burden"], ["Prediction", "Ground Truth", "Ratio",]),
                 ],
             )
 
