@@ -419,6 +419,7 @@ class Comparison:
 
     @staticmethod
     def _get_specs(specs_path):
+        
         specs = pd.read_csv(
             specs_path,
             index_col=0,
