@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from dseg.setup import PipelineConfig, FitConfig, NetConfig, Setup
-from dseg.data_manipulator import DataUtils, TrainingUtils, PlotUtils
+from dseg.data_manipulator import DataUtils, TrainingUtils, PlotUtils, GraphMaker
 from dseg.nets import NetBuilder
 
 
@@ -436,9 +436,7 @@ class Model:
         # predict all
         amount = len(gen)
         for (i, x) in enumerate(gen):
-            if verbose == 1:
-                DataUtils.simple_counter(i, amount)
-
+                
             pred = self.__model.predict(x)
 
             # if i < 1:
@@ -471,6 +469,9 @@ class Model:
                     image_size=self.setup.net_config.image_size,
                     x=x,
                 )
+            
+            DataUtils.simple_counter(i, amount)
+
 
     def update_trainable_params(self, state: str = "train_all"):
 
@@ -668,7 +669,6 @@ class Model:
         stats_list = [None for k in range(amount)]
         for (i, (x, y)) in enumerate(gen):
 
-            DataUtils.simple_counter(i, amount)
             
             pred = self.__model.predict(x)
 
@@ -694,6 +694,9 @@ class Model:
                 #     target_img_path=target_img_path,
                 #     print_options=print_options,
                 # )
+
+            DataUtils.simple_counter(i, amount)
+            
 
         data = pd.DataFrame(
             np.array(stats_list, dtype="float32"),
@@ -735,6 +738,32 @@ class Model:
         #     dpi=400,
         #     ci=None,
         # )
+
+        # Graph maker
+        dpi = 700
+        figure_args = {
+            "figsize": (4*19.20/5, 4*10.80/5),
+            "dpi": dpi,
+        }
+        
+        plotter = GraphMaker(figure_args=figure_args)
+        
+        plots_folder = os.path.join(save_folder, 'plots')
+        DataUtils.make_path(plots_folder)
+
+        for metric_i in ["DICE", "IoU", "Hausdorf Distance [mm]"]:
+            metric_name = metric_i.lower().replace(' [mm]', '').replace(' ', '_')
+
+            graph = plotter.violin(data, metric_i)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'violin_{metric_name}.png'), dpi=dpi)
+
+            graph = plotter.scatter(data, metric_i)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}.png'), dpi=dpi)
+
+            if metric_i in ["DICE", "IoU"]:
+                graph = plotter.scatter(data, metric_i, use_average=True)
+                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}_avg.png'), dpi=dpi)
+
 
         self.__analysed = True
 

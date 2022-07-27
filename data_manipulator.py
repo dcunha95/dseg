@@ -1271,97 +1271,102 @@ class PlotUtils:
 
 
 
-    class GraphMaker:
-        """Contains templates for plotting figures (violin, box, etc...)"""
+class GraphMaker:
+    """Contains templates for plotting figures (violin, box, etc...)"""
 
-        def __init__(self, set_title=True, palette="bright", figure_args=None):
-            
-            self.idx = pd.IndexSlice
+    def __init__(self, set_title=True, palette="bright", figure_args=None):
+        
+        self.idx = pd.IndexSlice
 
-            self.set_title = set_title
-            self.palette = palette
-            
-            if figure_args is None:
-                self.figure_args = {}
-            else:
-                self.figure_args=figure_args
+        self.set_title = set_title
+        self.palette = palette
+        
+        if figure_args is None:
+            self.figure_args = {}
+        else:
+            self.figure_args=figure_args
 
-            # sns.set_palette(self.palette)
+        # sns.set_palette(self.palette)
 
-        def _format_df(df): 
-            """Formats appropriately for sns.plot(x='x', y='y', data=data) style plots"""
+    def _format_df(self, df): 
+        """Formats appropriately for sns.plot(x='x', y='y', data=data) style plots"""
 
-            df2 = pd.DataFrame()
+        df2 = pd.DataFrame()
 
-            for (i, j) in df.iteritems():
-                df_i = df.loc[:, [i]]
-                df_i.columns = ['value']
-                df_i['class'] = i
-                df2 = pd.concat([df2, df_i])
-            
-            df2['data_point'] = df2.index.to_list()
-            df2.reset_index(inplace=True, drop=True)
+        for (i, j) in df.iteritems():
+            df_i = df.loc[:, [i]]
+            df_i.columns = ['Value']
+            df_i['Metric'] = i[0]
+            df_i['Class'] = i[1]
+            df2 = pd.concat([df2, df_i])
+        
+        df2['data_point'] = df2.index.to_list()
+        df2.reset_index(inplace=True, drop=True)
 
-            return df2
+        return df2
 
-        def _set_ylim(self, graph, metric):
-            """Set custom limits"""
+    def _set_ylim(self, graph, metric):
+        """Set custom limits"""
 
-            if metric in ["DICE", "IoU"]:
-                graph.set(ylim=(0, 1.03))
-            
-            else:
-                graph.set(
-                    ylim=(graph.get_ylim()[0]*1.5, graph.get_ylim()[1]*2.5),
-                )
-
-
-        def violin(self, data, metric, bw=0.2):
-            """Typical Violin plot"""
-
-            df = data.loc[data[data["Metric"] == metric]]
-
-            plt.figure(**self.figure_args)
-            graph = sns.violinplot(data=df, x='Class', y='Value', bw=bw, saturation=0.9, gridsize=400, cut=0)
-            
-            self._set_ylim(graph, metric)
-            graph.set(ylabel=metric)
-            graph.tick_params(left=True, bottom=False)
-            sns.despine(top=True, left=False, right=True, bottom=True, trim=True)
-            
-            return graph
-
-            
-        def scatterplot(self, data, metric, use_average=True):
-            """Typical Scatter plot"""
-
-            df = data.loc[data["Metric"] == metric]
-            
-            plt.figure(**self.figure_args)
-            
-            # plot only average or no average
-            if use_average:
-                df = df.loc[df['Class'] == "Average"]
-                if len(df) == 0:
-                    raise ValueError(f'{metric} has no Average class')
-            
-            else:            
-                df = df.loc[df['Class'] != "Average"]
-
-            # same marker for each class
-            markers = ["o" for i in df["Class"].nunique()]
-
-            graph = sns.scatterplot(data=df, x='data_point', y='Value', markers=markers, alpha=0.85, edgecolor=None)
-            
-            self._set_ylim(graph, metric)
-            
-            graph.tick_params(left=True, bottom=False)
-
+        if metric in ["DICE", "IoU"]:
+            graph.set(ylim=(0, 1.03))
+        
+        else:
             graph.set(
-                ylabel=metric,
-                xlim=(0, len(df)/len(markers)),
-                xlabel='Predictions',
+                ylim=(graph.get_ylim()[0]*1.5, graph.get_ylim()[1]*2.5),
             )
-            
-            return graph
+
+
+    def violin(self, data, metric, bw=0.2):
+        """Typical Violin plot"""
+
+        df = self._format_df(data)
+        df = df.loc[df["Metric"] == metric]
+        df = df.loc[df['Class'] != "Outer"]
+
+        plt.figure(**self.figure_args)
+        graph = sns.violinplot(data=df, x='Class', y='Value', bw=bw, saturation=0.9, gridsize=400, cut=0, palette=self.palette)
+        
+        self._set_ylim(graph, metric)
+        graph.set(ylabel=metric)
+        graph.tick_params(left=True, bottom=False)
+        sns.despine(top=True, left=False, right=True, bottom=True, trim=True)
+        
+        return graph
+
+        
+    def scatter(self, data, metric, use_average=False):
+        """Typical Scatter plot"""
+
+        df = self._format_df(data)
+        df = df.loc[df["Metric"] == metric]
+        
+        plt.figure(**self.figure_args)
+        
+        # plot only average or no average
+        if use_average:
+            df = df.loc[df['Class'] == "Average"]
+            if len(df) == 0:
+                raise ValueError(f'{metric} has no Average class')
+        
+        else:            
+            df = df.loc[df['Class'] != "Average"]
+            df = df.loc[df['Class'] != "Outer"]
+
+        # same marker for each class
+        markers = ["o" for i in range(df["Class"].nunique())]
+
+        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="Class", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
+        
+        self._set_ylim(graph, metric)
+        
+        graph.tick_params(left=True, bottom=False)
+
+        graph.set(
+            ylabel=metric,
+            xlim=(0, len(df)/len(markers)),
+            xlabel='Predictions',
+        )
+        
+        return graph
 
