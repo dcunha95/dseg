@@ -731,38 +731,25 @@ class Model:
 
         self.__analysis = out
 
-        # PlotUtils.save_plots(
-        #     data=self.analysis["data"],
-        #     data_info=self.analysis["data_info"],
-        #     save_folder=save_folder,
-        #     dpi=400,
-        #     ci=None,
-        # )
-
         # Graph maker
         dpi = 250
         figure_args = {
             "figsize": (4*19.20/5, 4*10.80/5),
             "dpi": dpi,
         }
+
+        metric_translation = {
+            "DICE" : "Sørensen-Dice Index", 
+            "IoU": "Jaccard Index", 
+        }
         
-        plotter = GraphMaker(figure_args=figure_args)
-        
-        plots_folder = os.path.join(save_folder, 'plots')
-        DataUtils.make_path(plots_folder)
+        plotter = GraphMaker(figure_args=figure_args, metric_translation=metric_translation)
+        PlotUtils.standard_plot_routine(data, save_folder, plotter)
 
-        for metric_i in ["DICE", "IoU", "Hausdorf Distance [mm]"]:
-            metric_name = metric_i.lower().replace(' [mm]', '').replace(' ', '_')
+        plotter.figure_args['figsize'] =  (4*19.20/5, 2*10.80/5)
+        plotter.figure_args['dpi'] = 500
+        PlotUtils.standard_plot_routine(data, save_folder, plotter, kname='thin')
 
-            graph = plotter.violin(data, metric_i)
-            graph.get_figure().savefig(os.path.join(plots_folder, f'violin_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
-
-            graph = plotter.scatter(data, metric_i)
-            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
-
-            if metric_i in ["DICE", "IoU"]:
-                graph = plotter.scatter(data, metric_i, use_average=True)
-                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
 
         self.__analysed = True
 

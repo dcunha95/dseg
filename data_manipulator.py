@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 import os
 
 import tensorflow as tf
@@ -1268,13 +1267,49 @@ class PlotUtils:
         )
 
         return
+    
+    @staticmethod
+    def standard_plot_routine(data: pd.DataFrame, save_folder: str, plotter = None, kname: str = ''):
+        """Standar plotting routine, saving generated plots at save_folder/plots_kname"""
+
+        plots_folder = os.path.join(save_folder, 'plots')
+        if kname != '':
+            plots_folder = ''.join([plots_folder, '_', kname])
+        DataUtils.make_path(plots_folder)
+
+        if plotter is None:
+            dpi = 250
+            figure_args = {
+                "figsize": (4*19.20/5, 4*10.80/5),
+                "dpi": dpi,
+            }
+            plotter = GraphMaker(figure_args=figure_args)
+        else:
+            if 'dpi' in plotter.figure_args:
+                dpi = plotter.figure_args['dpi']
+            else:
+                dpi = 250
+
+        for metric_i in ["DICE", "IoU", "Hausdorf Distance [mm]"]:
+            metric_name = metric_i.lower().replace(' [mm]', '').replace(' ', '_')
+
+            graph = plotter.violin(data, metric_i)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'violin_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
+
+            graph = plotter.scatter(data, metric_i)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
+
+            if metric_i in ["DICE", "IoU"]:
+                graph = plotter.scatter(data, metric_i, use_average=True)
+                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
+
 
 
 
 class GraphMaker:
     """Contains templates for plotting figures (violin, box, etc...)"""
 
-    def __init__(self, set_title=True, palette="bright", figure_args=None):
+    def __init__(self, set_title=True, palette="bright", figure_args=None, metric_translation = None):
         
         self.idx = pd.IndexSlice
 
@@ -1284,7 +1319,12 @@ class GraphMaker:
         if figure_args is None:
             self.figure_args = {}
         else:
-            self.figure_args=figure_args
+            self.figure_args = figure_args.copy()
+
+        if metric_translation is None:
+            self.metric_translation = {}
+        else:
+            self.metric_translation = metric_translation
 
         # sns.set_palette(self.palette)
 
@@ -1304,6 +1344,15 @@ class GraphMaker:
         df2.reset_index(inplace=True, drop=True)
 
         return df2
+
+    def _translate_metric(self, metric):
+        """Translates metric's name to a fancy pantsy one (ex. 'IoU' -> 'Jaccard Index')"""
+        
+        if metric in self.metric_translation:
+            return self.metric_translation[metric]
+        else:
+            return metric
+
 
     def _set_ylim(self, graph, metric):
         """Set custom limits"""
@@ -1328,7 +1377,7 @@ class GraphMaker:
         graph = sns.violinplot(data=df, x='Class', y='Value', bw=bw, saturation=0.9, gridsize=400, cut=0, palette=self.palette)
         
         self._set_ylim(graph, metric)
-        graph.set(ylabel=metric)
+        graph.set(ylabel=self._translate_metric(metric))
         graph.tick_params(left=True, bottom=False)
         sns.despine(top=True, left=False, right=True, bottom=True, trim=True)
         
@@ -1363,10 +1412,12 @@ class GraphMaker:
         graph.tick_params(left=True, bottom=False)
         graph.get_xaxis().set_visible(False)
         graph.set(
-            ylabel=metric,
+            ylabel=self._translate_metric(metric),
             xlim=(0, len(df)/len(markers)),
             xlabel='Predictions',
         )
         
         return graph
+
+
 
