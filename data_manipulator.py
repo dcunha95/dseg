@@ -520,7 +520,7 @@ class TrainingUtils:
 
     @staticmethod
     @tf.function
-    def split_y(file_path, image_size=(512, 512)):
+    def split_y(file_path, image_size=(512, 512), **kwargs):
         """Preprocessing routine that splits the mask in two separate ground truths (lumen and vessel)."""
         img = tf.io.read_file(file_path)
         img = tf.image.decode_png(img, channels=1)

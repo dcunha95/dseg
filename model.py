@@ -205,22 +205,22 @@ class Model:
         if isinstance(trn, str):
             self.__trn_dataset = DataUtils.load_dataset_reference(trn)
         else:
-            self.__trn_dataset = trn
+            self.__trn_dataset = trn.copy()
 
         if isinstance(val, str):
             self.__val_dataset = DataUtils.load_dataset_reference(val)
         else:
-            self.__val_dataset = val
+            self.__val_dataset = val.copy()
 
         if isinstance(tst, str):
             self.__tst_dataset = DataUtils.load_dataset_reference(tst)
         else:
-            self.__tst_dataset = tst
+            self.__tst_dataset = tst.copy()
 
         if isinstance(stt, str):
             self.__stt_dataset = DataUtils.load_dataset_reference(stt)
         else:
-            self.__stt_dataset = stt
+            self.__stt_dataset = stt.copy()
 
         ds = self.__trn_dataset, self.__val_dataset, self.__tst_dataset, self.__stt_dataset
 
