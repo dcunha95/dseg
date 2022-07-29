@@ -1,9 +1,12 @@
+from turtle import down
 import tensorflow as tf
 import numpy as np
 import os
 import random
 import PIL
 import tensorflow.keras.layers as ly
+
+from dseg.setup import NetConfig
 
 
 class NetBuilder:
@@ -270,8 +273,8 @@ class NetBuilder:
 
         # downsize
         if down_size is not None:
-            x = ly.Conv2D(filters=1, kernel_size=(down_size, down_size), strides=down_size)(x)
-            # x = ly.MaxPool2D(down_size)(x)
+            # x = ly.Conv2D(filters=1, kernel_size=(down_size, down_size), strides=down_size)(x)
+            x = ly.MaxPool2D(down_size)(x)
 
         nodes = [[] for i in range(depth)]
         # descend
@@ -322,15 +325,30 @@ class NetBuilder:
             )(x)
             nodes[k].append(node)
 
-        outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+        if net_config.multi_output:
+            x_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+            x_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
 
-        # upsize
-        if down_size is not None:
-            # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
-            outputs = ly.UpSampling2D(down_size, interpolation="bilinear")(outputs)
-            # outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(outputs)
+            if down_size is not None:
+                x_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_1)
+                x_2 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_2)
 
-        outputs = ly.Activation("softmax", dtype="float32")(outputs)
+            lumen = ly.Activation("sigmoid", name="lumen", dtype="float32")(x_1)
+            vessel = ly.Activation("sigmoid", name="vessel", dtype="float32")(x_2)
+
+            outputs = [lumen, vessel]
+
+        else:
+
+            outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+
+            # upsize
+            if down_size is not None:
+                # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
+                outputs = ly.UpSampling2D(down_size, interpolation="bilinear")(outputs)
+                # outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(outputs)
+
+            outputs = ly.Activation("softmax", dtype="float32")(outputs)
 
         model = tf.keras.Model(inputs, outputs, name="unet_13")
         return model
@@ -351,7 +369,7 @@ class NetBuilder:
         kernel_initializer = net_config.kernel_initializer
         bias_initializer = net_config.bias_initializer
 
-        # print("input_shape:", input_shape)
+        print("input_shape:", input_shape)
 
         inputs = tf.keras.Input(input_shape)
         x = inputs
@@ -416,15 +434,32 @@ class NetBuilder:
                 )(x)
                 nodes[i].append(node)
 
-        outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+        if net_config.multi_output:
+            x_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+            x_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
 
-        # upsize
-        if down_size is not None:
-            # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
-            outputs = ly.UpSampling2D(down_size, interpolation="bilinear")(outputs)
-            # outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(outputs)
+            if down_size is not None:
+                x_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_1)
+                x_2 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_2)
 
-        outputs = ly.Activation("softmax", dtype="float32")(outputs)
+            lumen = ly.Activation("sigmoid", name="lumen", dtype="float32")(x_1)
+            vessel = ly.Activation("sigmoid", name="vessel", dtype="float32")(x_2)
 
-        model = tf.keras.Model(inputs, outputs, name="unet_pp_12")
+            outputs = [lumen, vessel]
+            # outputs = ly.concatenate([x_1, x_2])
+            # outputs = ly.Reshape(target_shape=(2, input_shape[0], input_shape[1]))(outputs)
+
+        else:
+
+            outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+
+            # upsize
+            if down_size is not None:
+                # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
+                outputs = ly.UpSampling2D(down_size, interpolation="bilinear")(outputs)
+                # outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(outputs)
+
+            outputs = ly.Activation("softmax", dtype="float32")(outputs)
+
+        model = tf.keras.Model(inputs, outputs, name="unet_pp_13")
         return model
