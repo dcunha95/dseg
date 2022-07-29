@@ -709,16 +709,32 @@ class TrainingUtils:
         # Calculating Hausdorf Distances
 
         # lumen hausdorf distance
-        pred_l_contour = PlotUtils._get_contours(pred_l)[0]
-        gt_l_contour = PlotUtils._get_contours(gt_l)[0]
+        pred_l_contours = PlotUtils._get_contours(pred_l)
+        gt_l_contours = PlotUtils._get_contours(gt_l)
 
-        hd_l = TrainingUtils.hausdorf_distance(pred_l_contour, gt_l_contour)
+        if len(pred_l_contours) != 0 and len(gt_l_contours) != 0:
+
+            pred_l_contour = pred_l_contours[0]
+            gt_l_contour = gt_l_contours[0]
+
+            hd_l = TrainingUtils.hausdorf_distance(pred_l_contour, gt_l_contour)
+
+        else:
+            hd_l = np.inf
 
         # vessel hausdorf distance
-        pred_v_contour = PlotUtils._get_contours(pred_v)[0]
-        gt_v_contour = PlotUtils._get_contours(gt_v)[0]
+        pred_v_contours = PlotUtils._get_contours(pred_v)
+        gt_v_contours = PlotUtils._get_contours(gt_v)
+
+        if len(pred_v_contours) != 0 and len(gt_v_contours) != 0:
+
+            pred_v_contour = pred_v_contours[0]
+            gt_v_contour = gt_v_contours[0]
         
-        hd_v = TrainingUtils.hausdorf_distance(pred_v_contour, gt_v_contour)
+            hd_v = TrainingUtils.hausdorf_distance(pred_v_contour, gt_v_contour)
+        
+        else:
+            hd_v = np.inf
 
         # convert to mm
         hd_l = hd_l*10/prediction.shape[1]
