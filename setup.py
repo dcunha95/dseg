@@ -29,7 +29,7 @@ class NetConfig:
         pool_size=2,
         concat_all=True,
         node_type=4,
-        image_size=(16, 16),
+        image_size=(512, 512),
         down_size=None,
         base_filters=2,
         kernel_size=3,
