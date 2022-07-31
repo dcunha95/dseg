@@ -1449,25 +1449,21 @@ class GraphMaker:
         
             df_i = self._format_df(data_dict[tag_i])
             df_i = df.loc[df_i["Metric"] == metric]
+            df_i['ID'] = str(tag_i)
             pd.concat([df, df_i])
 
         df.reset_index(inplace=True, drop=True)
 
         plt.figure(**self.figure_args)
         
-        # plot only average or no average
         df = df.loc[df['Class'] == comp_class]
         if len(df) == 0:
-            raise ValueError(f'{metric} has no Average class')
-        
-        else:            
-            df = df.loc[df['Class'] != "Average"]
-            df = df.loc[df['Class'] != "Outer"]
+            raise ValueError(f'{metric} has no {comp_class} class')
 
         # same marker for each class
         markers = ["o" for i in range(df["Class"].nunique())]
 
-        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="Class", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
+        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="ID", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
         
         self._set_ylim(graph, metric)
         
@@ -1478,13 +1474,66 @@ class GraphMaker:
             xlim=(0, len(df)/len(markers)),
             xlabel='Predictions',
         )
-        pass
 
-    def comp_violin(self, data, metric):
-        pass
+    def comp_violin(self, data_dict, metric):
+            
+        df = pd.DataFrame()
+        for tag_i in data_dict:
+        
+            df_i = self._format_df(data_dict[tag_i])
+            df_i = df.loc[df_i["Metric"] == metric]
+            df_i['ID'] = str(tag_i)
+            pd.concat([df, df_i])
 
-    def comp_box(self, data, metric):
-        pass
+        df.reset_index(inplace=True, drop=True)
 
+        plt.figure(**self.figure_args)
+        
+        df = df.loc[df['Class'] != "Outer"]
+        if len(df) == 0:
+            raise ValueError(f'{metric} has no values')
+
+        graph = sns.violinplot(data=df, x='Class', y='Value', hue="ID", split=len(data_dict)==2, palette=self.palette)
+
+        self._set_ylim(graph, metric)
+        
+        graph.tick_params(left=True, bottom=False)
+        graph.get_xaxis().set_visible(False)
+        graph.set(
+            ylabel=self._translate_metric(metric),
+            xlabel='Predictions',
+        )
+
+
+    def comp_box(self, data_dict, metric):
+            
+        df = pd.DataFrame()
+        for tag_i in data_dict:
+        
+            df_i = self._format_df(data_dict[tag_i])
+            df_i = df.loc[df_i["Metric"] == metric]
+            df_i['ID'] = str(tag_i)
+            pd.concat([df, df_i])
+
+        df.reset_index(inplace=True, drop=True)
+
+        plt.figure(**self.figure_args)
+        
+        df = df.loc[df['Class'] != "Outer"]
+        if len(df) == 0:
+            raise ValueError(f'{metric} has no values')
+
+        graph = sns.boxplot(data=df, x='Class', y='Value', hue="ID", palette=self.palette)
+
+        self._set_ylim(graph, metric)
+        
+        graph.tick_params(left=True, bottom=False)
+        graph.get_xaxis().set_visible(False)
+        graph.set(
+            ylabel=self._translate_metric(metric),
+            xlabel='Predictions',
+        )
+
+    
 
 
