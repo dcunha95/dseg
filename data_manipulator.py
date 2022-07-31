@@ -1442,5 +1442,49 @@ class GraphMaker:
         
         return graph
 
+    def comp_scatter(self, data_dict, metric, comp_class):
+        
+        df = pd.DataFrame()
+        for tag_i in data_dict:
+        
+            df_i = self._format_df(data_dict[tag_i])
+            df_i = df.loc[df_i["Metric"] == metric]
+            pd.concat([df, df_i])
+
+        df.reset_index(inplace=True, drop=True)
+
+        plt.figure(**self.figure_args)
+        
+        # plot only average or no average
+        df = df.loc[df['Class'] == comp_class]
+        if len(df) == 0:
+            raise ValueError(f'{metric} has no Average class')
+        
+        else:            
+            df = df.loc[df['Class'] != "Average"]
+            df = df.loc[df['Class'] != "Outer"]
+
+        # same marker for each class
+        markers = ["o" for i in range(df["Class"].nunique())]
+
+        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="Class", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
+        
+        self._set_ylim(graph, metric)
+        
+        graph.tick_params(left=True, bottom=False)
+        graph.get_xaxis().set_visible(False)
+        graph.set(
+            ylabel=self._translate_metric(metric),
+            xlim=(0, len(df)/len(markers)),
+            xlabel='Predictions',
+        )
+        pass
+
+    def comp_violin(self, data, metric):
+        pass
+
+    def comp_box(self, data, metric):
+        pass
+
 
 
