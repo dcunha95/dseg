@@ -814,6 +814,10 @@ class PlotUtils:
             "Lumen": ("IoU", "Lumen"),
             "Plaque": ("IoU", "Plaque"),
             "Vessel": ("IoU", "Lumen"),            
+            "Name": ('Path', 'File Name'),
+        }
+
+        name_to_col2 = {
             "Name": "file_name",
         }
         
@@ -823,6 +827,12 @@ class PlotUtils:
             i_col = name_to_col[i]
             if i_col in data.columns:
                 name += str(data.iloc[j + base_j][i_col]) + "_"
+            
+            elif i in name_to_col2:
+                i_col = name_to_col2[i]
+                if i_col in data.columns:
+                    name += str(data.iloc[j + base_j][i_col]) + "_"
+            
 
         name += str(data.index[base_j + j])
         name = name.replace(".", "")
