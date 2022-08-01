@@ -720,7 +720,8 @@ class TrainingUtils:
             hd_l = TrainingUtils.hausdorf_distance(pred_l_contour, gt_l_contour)
 
         else:
-            hd_l = np.inf
+            # hd_l = np.inf
+            hd_l = 100
 
         # vessel hausdorf distance
         pred_v_contours = PlotUtils._get_contours(pred_v)
@@ -734,7 +735,8 @@ class TrainingUtils:
             hd_v = TrainingUtils.hausdorf_distance(pred_v_contour, gt_v_contour)
         
         else:
-            hd_v = np.inf
+            # hd_v = np.inf
+            hd_v = 100
 
         # convert to mm
         hd_l = hd_l*10/prediction.shape[1]
@@ -1293,7 +1295,7 @@ class PlotUtils:
     
     @staticmethod
     def standard_plot_routine(data: pd.DataFrame, save_folder: str, plotter = None, kname: str = ''):
-        """Standar plotting routine, saving generated plots at save_folder/plots_kname"""
+        """Standard plotting routine, saving generated plots at save_folder/plots_kname"""
 
         plots_folder = os.path.join(save_folder, 'plots')
         if kname != '':
