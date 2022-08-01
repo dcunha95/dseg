@@ -428,7 +428,7 @@ class Model:
         
         if simple_print:
             print_options = DataUtils.print_options_to_array(["output"])
-            name_format = ["file_name"]
+            name_format = ["Name"]
         else:
             print_options = DataUtils.print_options_to_array(self.setup.pipeline_config.print_options)
             name_format = [*self.setup.pipeline_config.name_format]
