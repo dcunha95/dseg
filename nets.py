@@ -268,6 +268,7 @@ class NetBuilder:
             )(node)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
+            
         outputs = node
 
         model = tf.keras.Model(inputs, outputs, name=name)
