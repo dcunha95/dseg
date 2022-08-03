@@ -377,6 +377,7 @@ class Model:
         if save_folder == "":
             save_folder = self.model_name
 
+        print(save_folder, self.setup.pipeline_config.print_options)
         # make appropriate save_folder/print_options[i] paths if they don't already exist
         for option in self.setup.pipeline_config.print_options:
             path = os.path.join(save_folder, "predictions", option)
