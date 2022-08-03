@@ -720,7 +720,8 @@ class TrainingUtils:
             hd_l = TrainingUtils.hausdorf_distance(pred_l_contour, gt_l_contour)
 
         else:
-            hd_l = np.inf
+            # hd_l = np.inf
+            hd_l = 100
 
         # vessel hausdorf distance
         pred_v_contours = PlotUtils._get_contours(pred_v)
@@ -734,7 +735,8 @@ class TrainingUtils:
             hd_v = TrainingUtils.hausdorf_distance(pred_v_contour, gt_v_contour)
         
         else:
-            hd_v = np.inf
+            # hd_v = np.inf
+            hd_v = 100
 
         # convert to mm
         hd_l = hd_l*10/prediction.shape[1]
@@ -814,6 +816,10 @@ class PlotUtils:
             "Lumen": ("IoU", "Lumen"),
             "Plaque": ("IoU", "Plaque"),
             "Vessel": ("IoU", "Lumen"),            
+            "Name": ('Path', 'File Name'),
+        }
+
+        name_to_col2 = {
             "Name": "file_name",
         }
         
@@ -823,6 +829,12 @@ class PlotUtils:
             i_col = name_to_col[i]
             if i_col in data.columns:
                 name += str(data.iloc[j + base_j][i_col]) + "_"
+            
+            elif i in name_to_col2:
+                i_col = name_to_col2[i]
+                if i_col in data.columns:
+                    name += str(data.iloc[j + base_j][i_col]) + "_"
+            
 
         name += str(data.index[base_j + j])
         name = name.replace(".", "")
@@ -1283,7 +1295,7 @@ class PlotUtils:
     
     @staticmethod
     def standard_plot_routine(data: pd.DataFrame, save_folder: str, plotter = None, kname: str = ''):
-        """Standar plotting routine, saving generated plots at save_folder/plots_kname"""
+        """Standard plotting routine, saving generated plots at save_folder/plots_kname"""
 
         plots_folder = os.path.join(save_folder, 'plots')
         if kname != '':
@@ -1432,5 +1444,98 @@ class GraphMaker:
         
         return graph
 
+    def comp_scatter(self, data_dict, metric, comp_class):
+        
+        df = pd.DataFrame()
+        for tag_i in data_dict:
+        
+            df_i = self._format_df(data_dict[tag_i])
+            df_i = df.loc[df_i["Metric"] == metric]
+            df_i['ID'] = str(tag_i)
+            pd.concat([df, df_i])
+
+        df.reset_index(inplace=True, drop=True)
+
+        plt.figure(**self.figure_args)
+        
+        df = df.loc[df['Class'] == comp_class]
+        if len(df) == 0:
+            raise ValueError(f'{metric} has no {comp_class} class')
+
+        # same marker for each class
+        markers = ["o" for i in range(df["Class"].nunique())]
+
+        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="ID", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
+        
+        self._set_ylim(graph, metric)
+        
+        graph.tick_params(left=True, bottom=False)
+        graph.get_xaxis().set_visible(False)
+        graph.set(
+            ylabel=self._translate_metric(metric),
+            xlim=(0, len(df)/len(markers)),
+            xlabel='Predictions',
+        )
+
+    def comp_violin(self, data_dict, metric):
+            
+        df = pd.DataFrame()
+        for tag_i in data_dict:
+        
+            df_i = self._format_df(data_dict[tag_i])
+            df_i = df.loc[df_i["Metric"] == metric]
+            df_i['ID'] = str(tag_i)
+            pd.concat([df, df_i])
+
+        df.reset_index(inplace=True, drop=True)
+
+        plt.figure(**self.figure_args)
+        
+        df = df.loc[df['Class'] != "Outer"]
+        if len(df) == 0:
+            raise ValueError(f'{metric} has no values')
+
+        graph = sns.violinplot(data=df, x='Class', y='Value', hue="ID", split=len(data_dict)==2, palette=self.palette)
+
+        self._set_ylim(graph, metric)
+        
+        graph.tick_params(left=True, bottom=False)
+        graph.get_xaxis().set_visible(False)
+        graph.set(
+            ylabel=self._translate_metric(metric),
+            xlabel='Predictions',
+        )
+
+
+    def comp_box(self, data_dict, metric):
+            
+        df = pd.DataFrame()
+        for tag_i in data_dict:
+        
+            df_i = self._format_df(data_dict[tag_i])
+            df_i = df.loc[df_i["Metric"] == metric]
+            df_i['ID'] = str(tag_i)
+            pd.concat([df, df_i])
+
+        df.reset_index(inplace=True, drop=True)
+
+        plt.figure(**self.figure_args)
+        
+        df = df.loc[df['Class'] != "Outer"]
+        if len(df) == 0:
+            raise ValueError(f'{metric} has no values')
+
+        graph = sns.boxplot(data=df, x='Class', y='Value', hue="ID", palette=self.palette)
+
+        self._set_ylim(graph, metric)
+        
+        graph.tick_params(left=True, bottom=False)
+        graph.get_xaxis().set_visible(False)
+        graph.set(
+            ylabel=self._translate_metric(metric),
+            xlabel='Predictions',
+        )
+
+    
 
 

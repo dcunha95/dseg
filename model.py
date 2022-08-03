@@ -377,6 +377,7 @@ class Model:
         if save_folder == "":
             save_folder = self.model_name
 
+        print(save_folder, self.setup.pipeline_config.print_options)
         # make appropriate save_folder/print_options[i] paths if they don't already exist
         for option in self.setup.pipeline_config.print_options:
             path = os.path.join(save_folder, "predictions", option)
@@ -428,7 +429,7 @@ class Model:
         
         if simple_print:
             print_options = DataUtils.print_options_to_array(["output"])
-            name_format = ["file_name"]
+            name_format = ["Name"]
         else:
             print_options = DataUtils.print_options_to_array(self.setup.pipeline_config.print_options)
             name_format = [*self.setup.pipeline_config.name_format]
@@ -662,7 +663,7 @@ class Model:
             # **self.__prep_kwargs,
         )
 
-        print_options = self.setup.pipeline_config.print_options
+        # print_options = self.setup.pipeline_config.print_options
 
         # predict all
         amount = len(gen)
