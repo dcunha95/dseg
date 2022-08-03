@@ -16,7 +16,7 @@ class PipelineConfig:
         self.dataset_percent = dataset_percent
         self.print_options = [*print_options]  # print options: [raw, output, input, input_original, gt, gt_original]
         self.name_format = [*name_format]
-        
+    
     def __repr__(self) -> str:
         return str(self.__dict__)
 

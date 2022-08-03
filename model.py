@@ -662,7 +662,7 @@ class Model:
             # **self.__prep_kwargs,
         )
 
-        print_options = self.setup.pipeline_config.print_options
+        # print_options = self.setup.pipeline_config.print_options
 
         # predict all
         amount = len(gen)
