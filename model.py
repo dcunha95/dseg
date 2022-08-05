@@ -377,7 +377,8 @@ class Model:
         if save_folder == "":
             save_folder = self.model_name
 
-        print(save_folder, self.setup.pipeline_config.print_options)
+        # print(save_folder, self.setup.pipeline_config.print_options)
+        # print_options=["raw", "output", "input", "input-original", "gt", "gt-original", "channels", "contour", "3d"]
         # make appropriate save_folder/print_options[i] paths if they don't already exist
         for option in self.setup.pipeline_config.print_options:
             path = os.path.join(save_folder, "predictions", option)
@@ -428,10 +429,10 @@ class Model:
         # print options: [raw, output, input, input_original, gt, gt_original]
         
         if simple_print:
-            print_options = DataUtils.print_options_to_array(["output"])
+            print_options_bool = DataUtils.print_options_to_array(["output"])
             name_format = ["Name"]
         else:
-            print_options = DataUtils.print_options_to_array(self.setup.pipeline_config.print_options)
+            print_options_bool = DataUtils.print_options_to_array(self.setup.pipeline_config.print_options)
             name_format = [*self.setup.pipeline_config.name_format]
 
         # predict all
@@ -466,7 +467,7 @@ class Model:
                     save_folder=save_folder,
                     input_img_path=input_img_path,
                     target_img_path=target_img_path,
-                    print_options=print_options,
+                    print_options=print_options_bool,
                     image_size=self.setup.net_config.image_size,
                     x=x,
                 )
