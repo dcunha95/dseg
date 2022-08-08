@@ -185,7 +185,7 @@ class Extractor:
     def id_last_training_results_path(id_path, base_name="ivus"):
         """Finds and returns the path of the last training executed in an ID: ivus_0, ivus_1, ivus_2 etc."""
 
-        dir = os.listdir(id_path)
+        directory = os.listdir(id_path)
 
         not_break = True
         n = 0
@@ -193,11 +193,13 @@ class Extractor:
         while not_break:
             find = base_name + "_" + str(n)
 
-            if find in dir:
-                n += 1
+            n += 1
+                
+            if find in directory:
                 last_training = find
             else:
-                not_break = False
+                if n > 10:
+                    not_break = False
 
         if last_training == -1:
             raise FileNotFoundError(f"No trainings found in {id_path}")
