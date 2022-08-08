@@ -269,6 +269,39 @@ class NetBuilder:
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
             
+        # conv, conv, conv, bn, relu
+        if node_type == 9:
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(inputs)
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(node)
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(node)
+            node = ly.BatchNormalization()(node)
+            node = ly.Activation("relu")(node)
+            
+
         outputs = node
 
         model = tf.keras.Model(inputs, outputs, name=name)
