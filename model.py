@@ -118,6 +118,11 @@ class Model:
         self.__setup.to_json("setup.json")
 
     @property
+    def keras_model(self):
+        """Keras model instance"""
+        return self.__model
+
+    @property
     def model_name(self):
         """Model name."""
         return self.__model_name
