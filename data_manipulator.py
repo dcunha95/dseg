@@ -354,7 +354,7 @@ class DataUtils:
         return dataf, data_infof, data_sorted
 
     @staticmethod
-    def make_tables(analysis, path=""):
+    def make_tables(analysis, path="", drop_count=False):
         """Generate appropriate LaTeX files at path/latex/."""
 
         save_folder = os.path.join(path, "latex")
@@ -370,11 +370,16 @@ class DataUtils:
             'pb': [*product(["Plaque Burden"], ["Prediction", "Ground Truth", "Ratio",])],
         }
 
+        if drop_count:
+            data_info = analysis['data_info_formatted'].drop('Count')
+        else:
+            data_info = analysis['data_info_formatted']
+
         for metric in metrics:
-            analysis['data_info_formatted'][metrics[metric]].to_latex(os.path.join(save_folder, f'results_{metric}.tex'))
+            data_info[metrics[metric]].to_latex(os.path.join(save_folder, f'results_{metric}.tex'))
         
-        analysis['data_info_formatted'].to_latex(os.path.join(save_folder, 'results_all.tex'))
-        analysis['data_info_formatted'].T.to_latex(os.path.join(save_folder, 'results_all_t.tex'))
+        data_info.to_latex(os.path.join(save_folder, 'results_all.tex'))
+        data_info.T.to_latex(os.path.join(save_folder, 'results_all_t.tex'))
 
 
 
