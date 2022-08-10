@@ -457,13 +457,18 @@ class Comparison:
     
     
     @staticmethod
-    def _fix_dtypes(specs):
+    def _fix_dtypes(specs, kernel_size=int):
         specs = specs.copy()
         to_str = ["Status", "Net", "Loss", "Optimizer", "Notes", "Downsizing", "Base ID", "Multi-channel"]
-        to_int = ["Epochs", "Depth", "Node Structure", "Base Filters", "Kernel Size", "Batch Size"]
+        to_int = ["Epochs", "Depth", "Node Structure", "Base Filters", "Batch Size"]
         to_bool = ["Multi-GPU", "Multi-Output", "Mixed Precision"]
         to_float = ["Learning Rate", "Median Avg. IoU", "IQR Avg. IoU"]
-    
+
+        if kernel_size == int:
+            to_int.append("Kernel Size")
+        else:
+            to_str.append("Kernel Size")
+
         specs[to_str] = specs[to_str].astype(str)
         specs[to_float] = specs[to_float].astype(float)
         specs[to_bool] = specs[to_bool].astype(bool)
