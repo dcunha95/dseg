@@ -315,22 +315,36 @@ class Model:
                 print("Using tf.keras.mixed_precision.LossScaleOptimizer")
                 opt = tf.keras.mixed_precision.LossScaleOptimizer(opt)
 
-        if fit_config.loss == "iou":
+        if fit_config.loss == 'iou+crossentropy':
+            iou = TrainingUtils.iou_loss
+            
+            if self.setup.net_config.multi_output:
+                ce = 'binary_crossentropy'
+                loss_weights = {
+                    "lumen": [0.5, 0.5],
+                    "vessel": [0.5, 0.5],
+                }
+                loss = {
+                    'lumen': [iou, ce],
+                    'vessel': [iou, ce],
+                }
+
+            else:
+                ce = 'categorical_crossentropy'
+                loss_weights = [0.5, 0.5]
+                loss = [iou, ce]
+
+
+        elif fit_config.loss == "iou":
+
             loss = TrainingUtils.iou_loss
+            loss_weights = None
+        
         else:
+
             loss = fit_config.loss
-
-        loss_weights = None
-        if self.setup.net_config.multi_output:
-            loss = {
-                "lumen": loss,
-                "vessel": loss,
-            }
-            loss_weights = {
-                "lumen": 0.5,
-                "vessel": 0.5,
-            }
-
+            loss_weights = None
+                    
         self.__model.compile(
             optimizer=opt,
             loss=loss,
