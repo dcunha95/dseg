@@ -53,7 +53,12 @@ class NetConfig:
         self.down_size = down_size
         self.input_shape = self.image_size + (channels,)
         self.base_filters = base_filters
-        self.kernel_size = kernel_size
+        
+        if isinstance(kernel_size, list):
+            self.kernel_size = [*kernel_size]
+        else:
+            self.kernel_size = kernel_size
+
         self.dropout_amount = dropout_amount
         self.use_bn = use_bn
         self.label_amount = label_amount
