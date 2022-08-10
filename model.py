@@ -321,8 +321,8 @@ class Model:
             if self.setup.net_config.multi_output:
                 ce = 'binary_crossentropy'
                 loss_weights = {
-                    "lumen": [0.25, 0.25],
-                    "vessel": [0.25, 0.25],
+                    "lumen": [0.5, 0.5],
+                    "vessel": [0.5, 0.5],
                 }
                 loss = {
                     'lumen': [iou, ce],
