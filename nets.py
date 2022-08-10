@@ -28,11 +28,16 @@ class NetBuilder:
     ):
         inputs = ly.Input(input_shape)
 
+        if isinstance(kernel_size, int):
+            kernel_size_i = kernel_size
+        else:
+            kernel_size_i = kernel_size[min(len(kernel_size)-1, level)]
+
         # micro-estrutura padrao
         if node_type == 0:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -44,7 +49,7 @@ class NetBuilder:
         if node_type == 1:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -53,7 +58,7 @@ class NetBuilder:
             )(inputs)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -69,7 +74,7 @@ class NetBuilder:
         if node_type == 2:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -78,7 +83,7 @@ class NetBuilder:
             )(inputs)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -91,7 +96,7 @@ class NetBuilder:
                 node = ly.Dropout(dropout_amount)(node)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -100,7 +105,7 @@ class NetBuilder:
             )(node)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -118,7 +123,7 @@ class NetBuilder:
             # 1
             node1 = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -127,7 +132,7 @@ class NetBuilder:
             )(inputs)
             node1 = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -142,7 +147,7 @@ class NetBuilder:
             # 2
             node2 = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -151,7 +156,7 @@ class NetBuilder:
             )(inputs)
             node2 = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 activation="relu",
                 padding="same",
                 dilation_rate=dilation_rate,
@@ -169,7 +174,7 @@ class NetBuilder:
         if node_type == 4:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -183,7 +188,7 @@ class NetBuilder:
         if node_type == 5:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -194,7 +199,7 @@ class NetBuilder:
             node = ly.Activation("relu")(node)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -207,7 +212,7 @@ class NetBuilder:
         if node_type == 6:
             x = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -215,7 +220,7 @@ class NetBuilder:
             )(inputs)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -224,7 +229,7 @@ class NetBuilder:
             node = ly.Activation("relu")(node)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -236,7 +241,7 @@ class NetBuilder:
         if node_type == 7:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -250,7 +255,7 @@ class NetBuilder:
         if node_type == 8:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -259,7 +264,7 @@ class NetBuilder:
             )(inputs)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -273,7 +278,7 @@ class NetBuilder:
         if node_type == 9:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -282,7 +287,7 @@ class NetBuilder:
             )(inputs)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
@@ -291,7 +296,7 @@ class NetBuilder:
             )(node)
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
-                kernel_size=kernel_size,
+                kernel_size=kernel_size_i,
                 padding="same",
                 dilation_rate=dilation_rate,
                 kernel_initializer=kernel_initializer,
