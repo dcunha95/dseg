@@ -1483,6 +1483,8 @@ class GraphMaker:
             xlabel='Predictions',
         )
 
+        return graph
+
     def comp_violin(self, data_dict, metric):
             
         df = pd.DataFrame()
@@ -1512,6 +1514,7 @@ class GraphMaker:
             xlabel='Predictions',
         )
 
+        return graph
 
     def comp_box(self, data_dict, metric):
             
@@ -1542,6 +1545,6 @@ class GraphMaker:
             xlabel='Predictions',
         )
 
-    
+        return graph    
 
 
