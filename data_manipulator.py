@@ -1453,12 +1453,12 @@ class GraphMaker:
     def comp_scatter(self, data_dict, metric, comp_class):
         
         df = pd.DataFrame()
-        
+
         for tag_i in data_dict:
             df_i = self._format_df(data_dict[tag_i])
             df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
-            pd.concat([df, df_i])
+            df = pd.concat([df, df_i])
 
         df.reset_index(inplace=True, drop=True)
 
@@ -1471,6 +1471,8 @@ class GraphMaker:
         # same marker for each class
         markers = ["o" for i in range(df["Class"].nunique())]
 
+        df['Value'] = df['Value'].astype(float)
+        
         graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="ID", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
         
         self._set_ylim(graph, metric)
@@ -1493,7 +1495,7 @@ class GraphMaker:
             df_i = self._format_df(data_dict[tag_i])
             df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
-            pd.concat([df, df_i])
+            df = pd.concat([df, df_i])
 
         df.reset_index(inplace=True, drop=True)
 
@@ -1502,6 +1504,8 @@ class GraphMaker:
         df = df.loc[df['Class'] != "Outer"]
         if len(df) == 0:
             raise ValueError(f'{metric} has no values')
+
+        df['Value'] = df['Value'].astype(float)
 
         graph = sns.violinplot(data=df, x='Class', y='Value', hue="ID", split=len(data_dict)==2, palette=self.palette)
 
@@ -1524,7 +1528,7 @@ class GraphMaker:
             df_i = self._format_df(data_dict[tag_i])
             df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
-            pd.concat([df, df_i])
+            df = pd.concat([df, df_i])
 
         df.reset_index(inplace=True, drop=True)
 
@@ -1533,6 +1537,8 @@ class GraphMaker:
         df = df.loc[df['Class'] != "Outer"]
         if len(df) == 0:
             raise ValueError(f'{metric} has no values')
+
+        df['Value'] = df['Value'].astype(float)
 
         graph = sns.boxplot(data=df, x='Class', y='Value', hue="ID", palette=self.palette)
 
