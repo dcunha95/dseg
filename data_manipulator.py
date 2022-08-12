@@ -1481,9 +1481,11 @@ class GraphMaker:
         graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=self._translate_metric(metric),
-            xlim=(0, len(df)/len(markers)),
+            xlim=(0, df['data_point'].max()),
             xlabel='Predictions',
         )
+        graph.tick_params(left=True, bottom=False)
+
 
         return graph
 
@@ -1512,11 +1514,14 @@ class GraphMaker:
         self._set_ylim(graph, metric)
         
         graph.tick_params(left=True, bottom=False)
-        graph.get_xaxis().set_visible(False)
+        # graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=self._translate_metric(metric),
-            xlabel='Predictions',
+            # xlabel='Predictions',
         )
+        graph.tick_params(left=True, bottom=False)
+        sns.despine(top=True, left=False, right=True, bottom=True, trim=True)
+
 
         return graph
 
@@ -1545,11 +1550,13 @@ class GraphMaker:
         self._set_ylim(graph, metric)
         
         graph.tick_params(left=True, bottom=False)
-        graph.get_xaxis().set_visible(False)
+        # graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=self._translate_metric(metric),
-            xlabel='Predictions',
+            # xlabel='Predictions',
         )
+        graph.tick_params(left=True, bottom=False)
+        sns.despine(top=True, left=False, right=True, bottom=True, trim=True)
 
         return graph    
 
