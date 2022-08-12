@@ -1393,7 +1393,7 @@ class GraphMaker:
         else:
             graph.set(
                 # ylim=(graph.get_ylim()[0]*1.5, graph.get_ylim()[1]*2.5),
-                ylim=(0, 15),
+                ylim=(0, 12),
             )
 
 
@@ -1473,7 +1473,7 @@ class GraphMaker:
 
         df['Value'] = df['Value'].astype(float)
         
-        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="ID", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
+        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="ID", markers=markers, alpha=0.45, edgecolor=None, palette=self.palette)
         
         self._set_ylim(graph, metric)
         
