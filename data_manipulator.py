@@ -1453,10 +1453,10 @@ class GraphMaker:
     def comp_scatter(self, data_dict, metric, comp_class):
         
         df = pd.DataFrame()
-        for tag_i in data_dict:
         
+        for tag_i in data_dict:
             df_i = self._format_df(data_dict[tag_i])
-            df_i = df.loc[df_i["Metric"] == metric]
+            df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
             pd.concat([df, df_i])
 
@@ -1488,10 +1488,10 @@ class GraphMaker:
     def comp_violin(self, data_dict, metric):
             
         df = pd.DataFrame()
+
         for tag_i in data_dict:
-        
             df_i = self._format_df(data_dict[tag_i])
-            df_i = df.loc[df_i["Metric"] == metric]
+            df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
             pd.concat([df, df_i])
 
@@ -1519,10 +1519,10 @@ class GraphMaker:
     def comp_box(self, data_dict, metric):
             
         df = pd.DataFrame()
-        for tag_i in data_dict:
-        
+
+        for tag_i in data_dict:        
             df_i = self._format_df(data_dict[tag_i])
-            df_i = df.loc[df_i["Metric"] == metric]
+            df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
             pd.concat([df, df_i])
 
