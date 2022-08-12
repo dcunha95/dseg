@@ -1392,7 +1392,8 @@ class GraphMaker:
         
         else:
             graph.set(
-                ylim=(graph.get_ylim()[0]*1.5, graph.get_ylim()[1]*2.5),
+                # ylim=(graph.get_ylim()[0]*1.5, graph.get_ylim()[1]*2.5),
+                ylim=(0, 15),
             )
 
 
