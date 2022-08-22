@@ -336,6 +336,12 @@ class NetBuilder:
             # x = ly.Conv2D(filters=1, kernel_size=(down_size, down_size), strides=down_size)(x)
             x = ly.MaxPool2D(down_size)(x)
 
+        # getting output kernel
+        if isinstance(kernel_size, int):
+            kernel_size_out = kernel_size
+        else:
+            kernel_size_out = kernel_size[0]
+
         nodes = [[] for i in range(depth)]
         # descend
         for k in range(depth):
@@ -386,8 +392,8 @@ class NetBuilder:
             nodes[k].append(node)
 
         if net_config.multi_output:
-            x_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
-            x_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+            x_1 = ly.Conv2D(filters=1, kernel_size=kernel_size_out, padding="same")(nodes[0][-1])
+            x_2 = ly.Conv2D(filters=1, kernel_size=kernel_size_out, padding="same")(nodes[0][-1])
 
             if down_size is not None:
                 x_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_1)
@@ -400,7 +406,7 @@ class NetBuilder:
 
         else:
 
-            outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+            outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size_out, padding="same")(nodes[0][-1])
 
             # upsize
             if down_size is not None:
@@ -440,6 +446,12 @@ class NetBuilder:
             x = ly.MaxPool2D(down_size)(x)
 
         nodes = [[] for i in range(depth)]
+
+        # getting output kernel
+        if isinstance(kernel_size, int):
+            kernel_size_out = kernel_size
+        else:
+            kernel_size_out = kernel_size[0]
 
         # descend (backbone)
         for i in range(depth):
@@ -495,8 +507,8 @@ class NetBuilder:
                 nodes[i].append(node)
 
         if net_config.multi_output:
-            x_1 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
-            x_2 = ly.Conv2D(filters=1, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+            x_1 = ly.Conv2D(filters=1, kernel_size=kernel_size_out, padding="same")(nodes[0][-1])
+            x_2 = ly.Conv2D(filters=1, kernel_size=kernel_size_out, padding="same")(nodes[0][-1])
 
             if down_size is not None:
                 x_1 = ly.UpSampling2D(down_size, interpolation="bilinear")(x_1)
@@ -511,7 +523,7 @@ class NetBuilder:
 
         else:
 
-            outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size, padding="same")(nodes[0][-1])
+            outputs = ly.Conv2D(filters=label_amount, kernel_size=kernel_size_out, padding="same")(nodes[0][-1])
 
             # upsize
             if down_size is not None:
