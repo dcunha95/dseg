@@ -448,7 +448,7 @@ class Model:
         # print options: [raw, output, input, input_original, gt, gt_original]
         
         if simple_print:
-            print_options_bool = DataUtils.print_options_to_array(["output"])
+            print_options_bool = DataUtils.print_options_to_array(["contour"])
             name_format = ["Name"]
         else:
             print_options_bool = DataUtils.print_options_to_array(self.setup.pipeline_config.print_options)
