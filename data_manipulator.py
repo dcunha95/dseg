@@ -1393,7 +1393,7 @@ class GraphMaker:
         else:
             graph.set(
                 # ylim=(graph.get_ylim()[0]*1.5, graph.get_ylim()[1]*2.5),
-                ylim=(0, 15),
+                ylim=(0, 12),
             )
 
 
@@ -1453,12 +1453,12 @@ class GraphMaker:
     def comp_scatter(self, data_dict, metric, comp_class):
         
         df = pd.DataFrame()
+
         for tag_i in data_dict:
-        
             df_i = self._format_df(data_dict[tag_i])
-            df_i = df.loc[df_i["Metric"] == metric]
+            df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
-            pd.concat([df, df_i])
+            df = pd.concat([df, df_i])
 
         df.reset_index(inplace=True, drop=True)
 
@@ -1471,7 +1471,9 @@ class GraphMaker:
         # same marker for each class
         markers = ["o" for i in range(df["Class"].nunique())]
 
-        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="ID", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
+        df['Value'] = df['Value'].astype(float)
+        
+        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="ID", markers=markers, alpha=0.45, edgecolor=None, palette=self.palette)
         
         self._set_ylim(graph, metric)
         
@@ -1479,19 +1481,23 @@ class GraphMaker:
         graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=self._translate_metric(metric),
-            xlim=(0, len(df)/len(markers)),
+            xlim=(0, df['data_point'].max()),
             xlabel='Predictions',
         )
+        graph.tick_params(left=True, bottom=False)
+
+
+        return graph
 
     def comp_violin(self, data_dict, metric):
             
         df = pd.DataFrame()
+
         for tag_i in data_dict:
-        
             df_i = self._format_df(data_dict[tag_i])
-            df_i = df.loc[df_i["Metric"] == metric]
+            df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
-            pd.concat([df, df_i])
+            df = pd.concat([df, df_i])
 
         df.reset_index(inplace=True, drop=True)
 
@@ -1500,28 +1506,34 @@ class GraphMaker:
         df = df.loc[df['Class'] != "Outer"]
         if len(df) == 0:
             raise ValueError(f'{metric} has no values')
+
+        df['Value'] = df['Value'].astype(float)
 
         graph = sns.violinplot(data=df, x='Class', y='Value', hue="ID", split=len(data_dict)==2, palette=self.palette)
 
         self._set_ylim(graph, metric)
         
         graph.tick_params(left=True, bottom=False)
-        graph.get_xaxis().set_visible(False)
+        # graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=self._translate_metric(metric),
-            xlabel='Predictions',
+            # xlabel='Predictions',
         )
+        graph.tick_params(left=True, bottom=False)
+        sns.despine(top=True, left=False, right=True, bottom=True, trim=True)
 
+
+        return graph
 
     def comp_box(self, data_dict, metric):
             
         df = pd.DataFrame()
-        for tag_i in data_dict:
-        
+
+        for tag_i in data_dict:        
             df_i = self._format_df(data_dict[tag_i])
-            df_i = df.loc[df_i["Metric"] == metric]
+            df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
-            pd.concat([df, df_i])
+            df = pd.concat([df, df_i])
 
         df.reset_index(inplace=True, drop=True)
 
@@ -1531,17 +1543,21 @@ class GraphMaker:
         if len(df) == 0:
             raise ValueError(f'{metric} has no values')
 
+        df['Value'] = df['Value'].astype(float)
+
         graph = sns.boxplot(data=df, x='Class', y='Value', hue="ID", palette=self.palette)
 
         self._set_ylim(graph, metric)
         
         graph.tick_params(left=True, bottom=False)
-        graph.get_xaxis().set_visible(False)
+        # graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=self._translate_metric(metric),
-            xlabel='Predictions',
+            # xlabel='Predictions',
         )
+        graph.tick_params(left=True, bottom=False)
+        sns.despine(top=True, left=False, right=True, bottom=True, trim=True)
 
-    
+        return graph    
 
 
