@@ -565,7 +565,7 @@ class NetBuilder:
         label_amount = net_config.label_amount
         node_type = net_config.node_type
         use_bn = net_config.use_bn
-        pool_size = net_config.pool_size
+        strides = net_config.pool_size
         down_size = net_config.down_size
         concat_all = net_config.concat_all
         kernel_initializer = net_config.kernel_initializer
@@ -601,6 +601,9 @@ class NetBuilder:
             #     int(input_shape[1] / (pool_size ** i)),
             #     base_filters * 2 ** i if i == 0 else 1,
             # )
+            
+
+
             node = NetBuilder.get_base(
                 input_shape=x.shape[1:],
                 level=i,
@@ -612,6 +615,7 @@ class NetBuilder:
                 name=name,
                 kernel_initializer=kernel_initializer,
                 bias_initializer=bias_initializer,
+                strides=strides,
             )(x)
             # print("node_exit:", node.shape)
             x = node
@@ -636,8 +640,13 @@ class NetBuilder:
                 else:
                     kernel_size_i = kernel_size[min(len(kernel_size)-1, i)]
 
+                if strides is None:
+                    stride_i = int((kernel_size_i-1)/2)+1
+                else:
+                    stride_i = strides
+
                 # layers.append(ly.UpSampling2D(pool_size, interpolation="bilinear")(nodes[i + 1][-1]))
-                layers.append(ly.Conv2DTranspose(filters=base_filters * 2 ** i, kernel_size=kernel_size_i, padding="same", strides=int((kernel_size_i-1)/2)+1)(nodes[i + 1][-1]))
+                layers.append(ly.Conv2DTranspose(filters=base_filters * 2 ** i, kernel_size=kernel_size_i, padding="same", strides=stride_i)(nodes[i + 1][-1]))
                 print("Conv2DTranspose on top of node", nodes[i + 1][-1].name, ":", layers[-1])
                 
                 # # does padding needs to be fixed?
