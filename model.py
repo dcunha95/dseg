@@ -58,7 +58,7 @@ class Model:
             if self.__setup.net_config.model_type == "unet++":
                 self.__model = NetBuilder.unet_pp(net_config=self.setup.net_config)
 
-            if self.__setup.net_config.model_type == "s-unet++":
+            if self.__setup.net_config.model_type == "snet++":
                 self.__model = NetBuilder.unet_pp2(net_config=self.setup.net_config)
 
             
