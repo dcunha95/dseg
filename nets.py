@@ -306,7 +306,7 @@ class NetBuilder:
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
             
-        # conv, bn, relu
+        # conv, bn, relu with strides
         if node_type == 10:
             if strides is None:
                 strides = int((kernel_size_i-1)/2)+1
@@ -323,6 +323,39 @@ class NetBuilder:
             )(inputs)
             node = ly.BatchNormalization()(node)
             node = ly.Activation("relu")(node)
+
+        # sep-conv, bn, relu with strides
+        if node_type == 11:
+            if strides is None:
+                strides = int((kernel_size_i-1)/2)+1
+            
+            node = ly.SeparableConv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size_i,
+                padding="same",
+                strides=strides,
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(inputs)
+            node = ly.BatchNormalization()(node)
+            node = ly.Activation("relu")(node)
+
+        # sep-conv, bn, relu
+        if node_type == 12:
+            node = ly.SeparableConv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size_i,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(inputs)
+            node = ly.BatchNormalization()(node)
+            node = ly.Activation("relu")(node)
+
 
         outputs = node
         print(f"node {name}: ", outputs)
@@ -434,7 +467,7 @@ class NetBuilder:
 
             outputs = ly.Activation("softmax", dtype="float32")(outputs)
 
-        model = tf.keras.Model(inputs, outputs, name="unet_13")
+        model = tf.keras.Model(inputs, outputs, name="unet")
         return model
 
     @staticmethod
@@ -551,7 +584,7 @@ class NetBuilder:
 
             outputs = ly.Activation("softmax", dtype="float32")(outputs)
 
-        model = tf.keras.Model(inputs, outputs, name="unet_pp_13")
+        model = tf.keras.Model(inputs, outputs, name="unet_pp")
         return model
 
 
@@ -683,5 +716,5 @@ class NetBuilder:
 
         outputs = ly.Activation("softmax", dtype="float32")(outputs)
 
-        model = tf.keras.Model(inputs, outputs, name="unet_pp_13")
+        model = tf.keras.Model(inputs, outputs, name="snet_pp")
         return model
