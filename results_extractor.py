@@ -433,7 +433,9 @@ class Comparison:
         specs["Multi-Output"] = specs["Multi-Output"].fillna(False).replace("X", True)
         specs["Mixed Precision"] = specs["Mixed Precision"].fillna(False).replace("X", True)
         specs["Downsizing"] = specs["Downsizing"].fillna("None")
-        specs["Multi-channel"] = specs["Multi-channel"].fillna("None") 
+        specs["Multi-channel"] = specs["Multi-channel"].fillna("None")
+        specs['Upsampling'] = specs['Upsampling'].fillna("None")
+        specs['T. Conv. Filters'] = specs['T. Conv. Filters'].fillna("None").replace("Base", "None")
         specs["Notes"] = specs["Notes"].fillna("")
 
         return specs

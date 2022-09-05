@@ -486,7 +486,7 @@ class NetBuilder:
         kernel_initializer = net_config.kernel_initializer
         bias_initializer = net_config.bias_initializer
         upsampling = net_config.upsampling
-        tconv_kernel = net_config.tconv_kernel
+        tconv_filters = net_config.tconv_filters
 
         print("input_shape:", input_shape)
 
@@ -549,14 +549,17 @@ class NetBuilder:
                 elif upsampling == 'tconv':
 
                     # calculating transposed convolution kernel
-                    if tconv_kernel is not None:
-                        kernel_size_i = tconv_kernel
-                    elif isinstance(kernel_size, int):
+                    if isinstance(kernel_size, int):
                         kernel_size_i = kernel_size
                     else:
                         kernel_size_i = kernel_size[min(len(kernel_size)-1, i)]
 
-                    layers.append(ly.Conv2DTranspose(filters=32, kernel_size=kernel_size_i, padding='same', strides=2)(nodes[i + 1][-1]))
+                    if tconv_filters is not None:
+                        tconv_filters_i = tconv_filters
+                    else:
+                        tconv_filters_i = base_filters * 2 ** i
+
+                    layers.append(ly.Conv2DTranspose(filters=tconv_filters_i, kernel_size=kernel_size_i, padding='same', strides=pool_size)(nodes[i + 1][-1]))
                 
                 x = ly.concatenate(layers)
 
