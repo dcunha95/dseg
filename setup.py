@@ -41,7 +41,7 @@ class NetConfig:
         multi_output=False,
         channels = 1,
         channel_strides = 1,
-        upsampling = "upsampling",
+        upsampling = "bilinear",
         tconv_kernel = None,
         **kwargs,
     ):

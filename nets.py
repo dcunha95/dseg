@@ -544,7 +544,7 @@ class NetBuilder:
                     layers = [nodes[i][-1]]
                 
                 # check upsampling method
-                if upsampling == 'upsampling':
+                if upsampling == 'bilinear':
                     layers.append(ly.UpSampling2D(pool_size, interpolation="bilinear")(nodes[i + 1][-1]))
                 elif upsampling == 'tconv':
 
@@ -556,7 +556,6 @@ class NetBuilder:
                     else:
                         kernel_size_i = kernel_size[min(len(kernel_size)-1, i)]
 
-                    # layers.append(ly.UpSampling2D(pool_size, interpolation="bilinear")(nodes[i + 1][-1]))
                     layers.append(ly.Conv2DTranspose(filters=32, kernel_size=kernel_size_i, padding='same', strides=2)(nodes[i + 1][-1]))
                 
                 x = ly.concatenate(layers)
