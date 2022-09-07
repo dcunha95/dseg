@@ -382,6 +382,10 @@ class NetBuilder:
         inputs = tf.keras.Input(input_shape)
         x = inputs
 
+        #normalize input
+        if net_config.normalize:
+            x = ly.BatchNormalization()(x)
+
         # downsize
         if down_size is not None:
             # x = ly.Conv2D(filters=1, kernel_size=(down_size, down_size), strides=down_size)(x)
@@ -492,6 +496,10 @@ class NetBuilder:
 
         inputs = tf.keras.Input(input_shape)
         x = inputs
+
+        #normalize input
+        if net_config.normalize:
+            x = ly.BatchNormalization()(x)
 
         # downsize
         if down_size is not None:
@@ -744,133 +752,3 @@ class NetBuilder:
         model = tf.keras.Model(inputs, outputs, name="snet_pp")
         return model
 
-
-    @staticmethod
-    def nunet_pp2(net_config):
-        input_shape = net_config.input_shape
-        base_filters = net_config.base_filters
-        kernel_size = net_config.kernel_size
-        depth = net_config.depth
-        dropout_amount = net_config.dropout_amount
-        label_amount = net_config.label_amount
-        node_type = net_config.node_type
-        use_bn = net_config.use_bn
-        strides = net_config.pool_size
-        down_size = net_config.down_size
-        concat_all = net_config.concat_all
-        kernel_initializer = net_config.kernel_initializer
-        bias_initializer = net_config.bias_initializer
-
-        print("input_shape:", input_shape)
-
-        inputs = tf.keras.Input(input_shape)
-        print("inputs: ",inputs)
-        x = inputs
-        x = ly.BatchNormalization()(x)
-
-        # downsize
-        if down_size is not None:
-            # x = ly.Conv2D(filters=1, kernel_size=(down_size, down_size), strides=down_size)(x)
-            x = ly.MaxPool2D(down_size)(x)
-
-        nodes = [[] for i in range(depth)]
-
-        # getting output kernel
-        if isinstance(kernel_size, int):
-            kernel_size_out = kernel_size
-        else:
-            kernel_size_out = kernel_size[0]
-
-        # descend (backbone)
-        for i in range(depth):
-            name = "bm_" + str(i) + "_0"
-            # print(name)
-            # print("node_entrance:", shape)
-            # print("x.shape:", x.shape)
-            # shape = (
-            #     int(input_shape[0] / (pool_size ** i)),
-            #     int(input_shape[1] / (pool_size ** i)),
-            #     base_filters * 2 ** i if i == 0 else 1,
-            # )
-            
-            node = NetBuilder.get_base(
-                input_shape=x.shape[1:],
-                level=i,
-                base_filters=base_filters,
-                kernel_size=kernel_size,
-                dropout_amount=dropout_amount,
-                node_type=node_type,
-                use_bn=use_bn,
-                name=name,
-                kernel_initializer=kernel_initializer,
-                bias_initializer=bias_initializer,
-                strides=strides,
-            )(x)
-            # print("node_exit:", node.shape)
-            x = node
-            nodes[i].append(node)
-            # x = ly.MaxPool2D(pool_size=pool_size, padding="same")(nodes[i][-1])
-            # print("maxpool:", x.shape)
-
-        # for each column except the first
-        for j in range(1, depth):
-            # for each level (if it exists) 
-            for i in range(depth - j):
-                # print(i, j, sep="\t")
-                name = "bm_" + str(i) + "_" + str(j)
-                if concat_all:
-                    layers = [*nodes[i]]
-                else:
-                    layers = [nodes[i][-1]]
-
-                # calculating transposed convolution kernel
-                if isinstance(kernel_size, int):
-                    kernel_size_i = kernel_size
-                else:
-                    kernel_size_i = kernel_size[min(len(kernel_size)-1, i)]
-
-                if strides is None:
-                    stride_i = int((kernel_size_i-1)/2)+1
-                else:
-                    stride_i = strides
-
-                # layers.append(ly.UpSampling2D(pool_size, interpolation="bilinear")(nodes[i + 1][-1]))
-                layers.append(ly.Conv2DTranspose(filters=base_filters * 2 ** i, kernel_size=kernel_size_i, padding="same", strides=stride_i)(nodes[i + 1][-1]))
-                print("Conv2DTranspose on top of node", nodes[i + 1][-1].name, ":", layers[-1])
-                
-                # # does padding needs to be fixed?
-                # dim_difference = layers[-1].shape[1] - nodes[i][-1].shape[1]
-                # if dim_difference > 0:
-                #     print("using dim difference")
-                #     layers[-1] = ly.ZeroPadding2D(padding=int(dim_difference/2))(layers[-1])
-
-                x = ly.concatenate(layers)
-
-                node = NetBuilder.get_base(
-                    input_shape=x.shape[1:],
-                    level=i,
-                    base_filters=base_filters,
-                    kernel_size=kernel_size,
-                    dropout_amount=dropout_amount,
-                    node_type=node_type,
-                    use_bn=use_bn,
-                    name=name,
-                    kernel_initializer=kernel_initializer,
-                    bias_initializer=bias_initializer,
-                    strides=1,
-                )(x)
-                nodes[i].append(node)
-
-        outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=kernel_size_out, padding="same", strides=int((kernel_size_i-1)/2)+1)(nodes[0][-1])
-
-        # upsize
-        if down_size is not None:
-            # x = ly.Conv2D(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(x)
-            outputs = ly.UpSampling2D(down_size, interpolation="bilinear")(outputs)
-            # outputs = tf.image.resize(outputs, size=[input_shape[:2]], method="bilinear")
-            # outputs = ly.Conv2DTranspose(filters=label_amount, kernel_size=(down_size, down_size), strides=down_size)(outputs)
-
-        outputs = ly.Activation("softmax", dtype="float32")(outputs)
-
-        model = tf.keras.Model(inputs, outputs, name="snet_pp")
-        return model
