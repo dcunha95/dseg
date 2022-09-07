@@ -59,7 +59,7 @@ class Model:
                 self.__model = NetBuilder.unet_pp(net_config=self.setup.net_config)
 
             elif self.__setup.net_config.model_type == "snet++":
-                self.__model = NetBuilder.unet_pp2(net_config=self.setup.net_config)
+                self.__model = NetBuilder.snet_pp(net_config=self.setup.net_config)
 
             else:
                 raise ValueError(f'Unknown model_type {self.__setup.net_config.model_type}')
