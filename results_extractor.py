@@ -430,6 +430,7 @@ class Comparison:
         )
         specs["Base ID"] = specs["Base ID"].fillna("None")
         specs["Multi-GPU"] = specs["Multi-GPU"].fillna(False).replace("X", True)
+        specs["Input Normalization"] = specs["Input Normalization"].fillna(False).replace("X", True)
         specs["Multi-Output"] = specs["Multi-Output"].fillna(False).replace("X", True)
         specs["Mixed Precision"] = specs["Mixed Precision"].fillna(False).replace("X", True)
         specs["Downsizing"] = specs["Downsizing"].fillna("None")
@@ -463,7 +464,7 @@ class Comparison:
         specs = specs.copy()
         to_str = ["Status", "Net", "Loss", "Optimizer", "Notes", "Downsizing", "Base ID", "Multi-channel"]
         to_int = ["Epochs", "Depth", "Node Structure", "Base Filters", "Batch Size"]
-        to_bool = ["Multi-GPU", "Multi-Output", "Mixed Precision"]
+        to_bool = ["Multi-GPU", "Multi-Output", "Mixed Precision", 'Input Normalization']
         to_float = ["Learning Rate", "Median Avg. IoU", "IQR Avg. IoU"]
 
         if kernel_size == int:
