@@ -55,8 +55,14 @@ class Model:
             if self.__setup.net_config.model_type == "unet":
                 self.__model = NetBuilder.unet(net_config=self.setup.net_config)
 
-            if self.__setup.net_config.model_type == "unet++":
+            elif self.__setup.net_config.model_type == "unet++":
                 self.__model = NetBuilder.unet_pp(net_config=self.setup.net_config)
+
+            elif self.__setup.net_config.model_type == "snet++":
+                self.__model = NetBuilder.snet_pp(net_config=self.setup.net_config)
+
+            else:
+                raise ValueError(f'Unknown model_type {self.__setup.net_config.model_type}')
 
         # load existing model (net)
         else:

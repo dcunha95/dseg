@@ -41,6 +41,9 @@ class NetConfig:
         multi_output=False,
         channels = 1,
         channel_strides = 1,
+        upsampling = "bilinear",
+        tconv_filters = None,
+        normalize=False,
         **kwargs,
     ):
         # Net related:
@@ -67,6 +70,9 @@ class NetConfig:
         self.multi_output = multi_output
         self.channels = channels
         self.channel_strides = channel_strides
+        self.upsampling = upsampling
+        self.tconv_filters = tconv_filters
+        self.normalize = normalize
 
     def __repr__(self) -> str:
         return str(self.__dict__)
