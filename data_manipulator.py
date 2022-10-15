@@ -1299,7 +1299,7 @@ class PlotUtils:
         return
     
     @staticmethod
-    def standard_plot_routine(data: pd.DataFrame, save_folder: str, plotter = None, kname: str = ''):
+    def standard_plot_routine(data: pd.DataFrame, save_folder: str, plotter = None, kname: str = '', auto_close: bool = True):
         """Standard plotting routine, saving generated plots at save_folder/plots_kname"""
 
         plots_folder = os.path.join(save_folder, 'plots')
@@ -1325,14 +1325,19 @@ class PlotUtils:
 
             graph = plotter.violin(data, metric_i)
             graph.get_figure().savefig(os.path.join(plots_folder, f'violin_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
+            if auto_close:
+                plt.close()
 
             graph = plotter.scatter(data, metric_i)
             graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
+            if auto_close:
+                plt.close()
 
             if metric_i in ["DICE", "IoU"]:
                 graph = plotter.scatter(data, metric_i, use_average=True)
                 graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
-
+                if auto_close:
+                    plt.close()
 
 
 
