@@ -1366,11 +1366,16 @@ class PlotUtils:
 
 
         # ratio plots
-        for metric_i in ["Area [mm²]", "Plaque Burden"]:
-            pass
-        
+        for metric_i in ["Lumen", "Plaque", "Vessel", "Plaque Burden"]:
+            metric_name = metric_i.lower().replace(' [mm]', '').replace(' ', '_')
 
+            graph = plotter.ratio(data=data, comparison_target=metric_i)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'ratio_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
 
+            graph = plotter.ratio(data=data, comparison_target=metric_i)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'bland_altman_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
+
+            
 
 
 class GraphMaker:
@@ -1532,8 +1537,9 @@ class GraphMaker:
         figure_args['figsize'] = (avg_size, avg_size) 
 
         plt.figure(**self.figure_args)
-        graph = sns.scatterplot(data=data, x=x, y=y, marker="o", color="red", s=40, linewidth=0)
-        graph = sns.lineplot(x=[0, 1.2 * data_max], y=[0, 1.2 * data_max], ci=None, linewidth=8, color='blue', alpha=0.75)
+        with sns.axes_style('whitegrid', {'grid.color': '0.4'}):
+            graph = sns.scatterplot(data=data, x=x, y=y, marker="o", color="red", s=40, linewidth=0, alpha=0.75)
+            graph = sns.lineplot(x=[0, 1.2 * data_max], y=[0, 1.2 * data_max], ci=None, linewidth=8, color='blue', alpha=0.75)
         graph.axis("scaled")
         graph.set(xlim=(0, 1.2 * data_max), ylim=(0, 1.2 * data_max))
         graph.set(
@@ -1548,6 +1554,45 @@ class GraphMaker:
             ) 
 
         return graph
+
+
+    def bland_altman(self, data, comparison_target):
+        """Bland-Altman plot"""
+
+        if comparison_target == 'Plaque Burden':
+            y = (comparison_target, 'Prediction')
+            x = (comparison_target, 'Ground Truth')
+            xlabel = comparison_target + ' Mean'
+            ylabel = comparison_target + ' Difference'
+
+        else:
+            y = ('Area [mm²]', comparison_target)
+            x = ('Area [mm²]', f'{comparison_target} GT')
+            xlabel = f'{comparison_target} Area Mean [mm²]'
+            ylabel = f'{comparison_target} Area Difference [mm²]'
+
+
+        df = data[[x, y]].copy().astype(float)
+
+        df['Mean'] = (df[x] + df[y])/2
+        df['Difference'] = df[x] - df[y]
+        diff_mean = df['Difference'].mean()
+        diff_std = df['Difference'].std()
+
+        plt.figure(**self.figure_args)
+        with sns.axes_style('ticks'):
+            graph = sns.scatterplot(data=df, x='Mean', y='Difference', markers=['x'], edgecolor=None, color=(0.9, 0.2, 0.3), s=100, alpha=0.85)
+            plt.axhline(diff_mean, color='0.25', linewidth=3)
+            plt.axhline(diff_mean+1.96*diff_std, color='0.2', linestyle='--', linewidth=2)
+            plt.axhline(diff_mean-1.96*diff_std, color='0.2', linestyle='--', linewidth=2)
+
+        graph.set(
+            xlabel=xlabel,
+            ylabel=ylabel,
+        )
+
+        return graph
+
 
     def comp_scatter(self, data_dict, metric, comp_class, x_axis=None):
         
