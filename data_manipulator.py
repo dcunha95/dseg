@@ -364,7 +364,7 @@ class DataUtils:
         metrics = {
             'iou': [*product(["IoU"], ["Average", "Lumen", "Plaque", "Vessel",])],
             'dice': [*product(["DICE"], ["Average", "Lumen", "Plaque", "Vessel",])],
-            'hd': [*product(["Hausdorf Distance [mm]"], ["Lumen", "Plaque", "Vessel",])],
+            'hd': [*product(["Hausdorff Distance [mm]"], ["Lumen", "Plaque", "Vessel",])],
             'area': [*product(["Area [mm²]"], ["Lumen", "Lumen GT", "Plaque", "Plaque GT", "Vessel", "Vessel GT",])],
             'ratio': [*product(["Area Ratio"], ["Lumen", "Plaque", "Vessel",])],
             'pb': [*product(["Plaque Burden"], ["Prediction", "Ground Truth", "Ratio",])],
@@ -421,7 +421,7 @@ class TrainingUtils:
 
     @staticmethod
     def hausdorf_distance(u, v) -> float:
-        """Returns Hausdorf distance"""
+        """Returns Hausdorff distance"""
 
         return max(directed_hausdorff(u, v)[0], directed_hausdorff(v, u)[0])
 
@@ -711,7 +711,7 @@ class TrainingUtils:
         dice_avg = (dice_l + dice_p) / 2
 
 
-        # Calculating Hausdorf Distances
+        # Calculating Hausdorff Distances
 
         # lumen hausdorf distance
         pred_l_contours = PlotUtils._get_contours(pred_l)
@@ -1211,7 +1211,7 @@ class PlotUtils:
 
         # DICE
 
-        # Hausdorf Distance
+        # Hausdorff Distance
 
         # Area
 
@@ -1320,7 +1320,8 @@ class PlotUtils:
             else:
                 dpi = 250
 
-        for metric_i in ["DICE", "IoU", "Hausdorf Distance [mm]"]:
+        # overall scatter, violin and box plots
+        for metric_i in ["DICE", "IoU", "Hausdorff Distance [mm]"]:
             metric_name = metric_i.lower().replace(' [mm]', '').replace(' ', '_')
 
             graph = plotter.violin(data, metric_i)
@@ -1333,11 +1334,42 @@ class PlotUtils:
             if auto_close:
                 plt.close()
 
+            # scatter plot ordered by ground truth's plaque burden
+            graph = plotter.scatter(data=data, metric=metric_i, x_axis=('Plaque Burden', 'Ground Truth'))
+            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-pb_gt_y-{metric_name}.png'), dpi=dpi, bbox_inches='tight')
+            if auto_close:
+                plt.close()
+
+            # scatter plot ordered by ground truth's plaque area
+            graph = plotter.scatter(data=data, metric=metric_i, x_axis=('Area [mm²]', 'Plaque GT'))
+            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-area_p_gt_y-{metric_name}.png'), dpi=dpi, bbox_inches='tight')
+            if auto_close:
+                plt.close()
+
             if metric_i in ["DICE", "IoU"]:
                 graph = plotter.scatter(data, metric_i, use_average=True)
                 graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
                 if auto_close:
                     plt.close()
+
+                # scatter plot ordered by ground truth's plaque burden
+                graph = plotter.scatter(data=data, metric=metric_i, x_axis=('Plaque Burden', 'Ground Truth'), use_average=True)
+                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-pb_gt_y-{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
+                if auto_close:
+                    plt.close()
+
+                # scatter plot ordered by ground truth's plaque area
+                graph = plotter.scatter(data=data, metric=metric_i, x_axis=('Area [mm²]', 'Plaque GT'), use_average=True)
+                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-area_p_gt_y-{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
+                if auto_close:
+                    plt.close()
+
+
+        # ratio plots
+        for metric_i in ["Area [mm²]", "Plaque Burden"]:
+            pass
+        
+
 
 
 
@@ -1363,7 +1395,8 @@ class GraphMaker:
 
         # sns.set_palette(self.palette)
 
-    def _format_df(self, df): 
+        
+    def _format_df(self, df, x=None): 
         """Formats appropriately for sns.plot(x='x', y='y', data=data) style plots"""
 
         df2 = pd.DataFrame()
@@ -1373,12 +1406,18 @@ class GraphMaker:
             df_i.columns = ['Value']
             df_i['Metric'] = i[0]
             df_i['Class'] = i[1]
+            
+            # add x-axis
+            if x is not None:
+                df_i['x'] = df.loc[:, [x]]
+
             df2 = pd.concat([df2, df_i])
         
         df2['data_point'] = df2.index.to_list()
         df2.reset_index(inplace=True, drop=True)
 
         return df2
+
 
     def _translate_metric(self, metric):
         """Translates metric's name to a fancy pantsy one (ex. 'IoU' -> 'Jaccard Index')"""
@@ -1420,10 +1459,10 @@ class GraphMaker:
         return graph
 
         
-    def scatter(self, data, metric, use_average=False):
+    def scatter(self, data, metric, use_average=False, x_axis=None):
         """Typical Scatter plot"""
 
-        df = self._format_df(data)
+        df = self._format_df(data, x=x_axis)
         df = df.loc[df["Metric"] == metric]
         
         plt.figure(**self.figure_args)
@@ -1441,26 +1480,81 @@ class GraphMaker:
         # same marker for each class
         markers = ["o" for i in range(df["Class"].nunique())]
 
-        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="Class", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
-        
+        # if a specific x is provided, use that instead of the default data point
+        if x_axis is None:
+            x = 'data_point'
+        else:
+            x = 'x'
+
+        graph = sns.scatterplot(data=df, x=x, y='Value', hue="Class", markers=markers, alpha=0.85, edgecolor=None, palette=self.palette)
         self._set_ylim(graph, metric)
         
         graph.tick_params(left=True, bottom=False)
-        graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=self._translate_metric(metric),
-            xlim=(0, len(df)/len(markers)),
-            xlabel='Predictions',
         )
-        
+
+        if x_axis is None:
+            graph.get_xaxis().set_visible(False)
+            graph.set(
+                xlim=(0, len(df)/len(markers)),
+                xlabel='Predictions',
+            )
+        else:
+            graph.set(
+                xlabel=''.join([x_axis[1], ' ', x_axis[0]]),
+            )
+
         return graph
 
-    def comp_scatter(self, data_dict, metric, comp_class):
+
+    def ratio(self, data, comparison_target):
+        """Plots area or plaque burden ratios, as (Model, GT) pairs"""
+
+        if comparison_target == 'Plaque Burden':
+            y = (comparison_target, 'Prediction')
+            x = (comparison_target, 'Ground Truth')
+
+        else:
+            y = ('Area [mm²]', comparison_target)
+            x = ('Area [mm²]', f'{comparison_target} GT')
+        
+        df = data[[x, y]].copy().astype(float)
+        
+        if comparison_target == 'Plaque Burden':
+            data_max = 0.86
+        else:
+            data_max = df.max().max()
+
+        # plot needs to be a square shape
+        figure_args = self.figure_args.copy()
+        avg_size = np.mean(figure_args['figsize'])
+        figure_args['figsize'] = (avg_size, avg_size) 
+
+        plt.figure(**self.figure_args)
+        graph = sns.scatterplot(data=data, x=x, y=y, marker="o", color="red", s=40, linewidth=0)
+        graph = sns.lineplot(x=[0, 1.2 * data_max], y=[0, 1.2 * data_max], ci=None, linewidth=8, color='blue', alpha=0.75)
+        graph.axis("scaled")
+        graph.set(xlim=(0, 1.2 * data_max), ylim=(0, 1.2 * data_max))
+        graph.set(
+            xlabel=''.join([x[1], ' ', x[0]]),
+            ylabel=''.join([y[1], ' ', y[0]]),
+        )
+        
+        if comparison_target == 'Plaque Burden':
+            graph.set(
+                xticks=[i/10 for i in range(11)],
+                yticks=[i/10 for i in range(11)],
+            ) 
+
+        return graph
+
+    def comp_scatter(self, data_dict, metric, comp_class, x_axis=None):
         
         df = pd.DataFrame()
 
         for tag_i in data_dict:
-            df_i = self._format_df(data_dict[tag_i])
+            df_i = self._format_df(data_dict[tag_i], x=x_axis)
             df_i = df_i.loc[df_i["Metric"] == metric]
             df_i['ID'] = str(tag_i)
             df = pd.concat([df, df_i])
@@ -1478,21 +1572,34 @@ class GraphMaker:
 
         df['Value'] = df['Value'].astype(float)
         
-        graph = sns.scatterplot(data=df, x='data_point', y='Value', hue="ID", markers=markers, alpha=0.45, edgecolor=None, palette=self.palette)
-        
+        # if a specific x is provided, use that instead of the default data point
+        if x_axis is None:
+            x = 'data_point'
+        else:
+            x = 'x'
+            df['x'] = df['x'].astype(float)
+
+        graph = sns.scatterplot(data=df, x=x, y='Value', hue="ID", markers=markers, alpha=0.45, edgecolor=None, palette=self.palette)
         self._set_ylim(graph, metric)
         
         graph.tick_params(left=True, bottom=False)
-        graph.get_xaxis().set_visible(False)
         graph.set(
             ylabel=self._translate_metric(metric),
-            xlim=(0, df['data_point'].max()),
-            xlabel='Predictions',
         )
-        graph.tick_params(left=True, bottom=False)
 
+        if x_axis is None:
+            graph.get_xaxis().set_visible(False)
+            graph.set(
+                xlim=(0, df['data_point'].max()),
+                xlabel='Predictions',
+            )
+        else:
+            graph.set(
+                xlabel=''.join([x_axis[1], ' ', x_axis[0]]),
+            )
 
         return graph
+
 
     def comp_violin(self, data_dict, metric):
             
@@ -1529,6 +1636,7 @@ class GraphMaker:
 
 
         return graph
+
 
     def comp_box(self, data_dict, metric):
             
