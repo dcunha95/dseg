@@ -1371,10 +1371,13 @@ class PlotUtils:
 
             graph = plotter.ratio(data=data, comparison_target=metric_i)
             graph.get_figure().savefig(os.path.join(plots_folder, f'ratio_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
+            if auto_close:
+                plt.close()
 
-            graph = plotter.ratio(data=data, comparison_target=metric_i)
+            graph = plotter.bland_altman(data=data, comparison_target=metric_i)
             graph.get_figure().savefig(os.path.join(plots_folder, f'bland_altman_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
-
+            if auto_close:
+                plt.close()
             
 
 
