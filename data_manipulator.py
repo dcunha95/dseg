@@ -1578,7 +1578,7 @@ class GraphMaker:
         df = data[[x, y]].copy().astype(float)
 
         df['Mean'] = (df[x] + df[y])/2
-        df['Difference'] = df[x] - df[y]
+        df['Difference'] = df[y] - df[x]
         diff_mean = df['Difference'].mean()
         diff_std = df['Difference'].std()
 
