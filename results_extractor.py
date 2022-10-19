@@ -464,7 +464,7 @@ class Comparison:
     def _fix_dtypes(specs, kernel_size=int):
         specs = specs.copy()
         to_str = ["Status", "Net", "Loss", "Optimizer", "Notes", "Downsizing", "Base ID", "Multi-channel", "Multi-channel Strides"]
-        to_int = ["Epochs", "Depth", "Node Structure", "Base Filters", "Batch Size"]
+        to_int = ["Epochs", "Depth", "Node Structure", "Base Filters", "Batch Size", "Pooling Factor"]
         to_bool = ["Multi-GPU", "Multi-Output", "Mixed Precision", 'Input Normalization']
         to_float = ["Learning Rate", "Median Avg. IoU", "IQR Avg. IoU"]
 
