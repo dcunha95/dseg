@@ -1299,7 +1299,14 @@ class PlotUtils:
         return
     
     @staticmethod
-    def standard_plot_routine(data: pd.DataFrame, save_folder: str, plotter = None, kname: str = '', auto_close: bool = True):
+    def standard_plot_routine(
+        data: pd.DataFrame, 
+        save_folder: str, 
+        plotter = None, 
+        kname: str = '', 
+        auto_close: bool = True, 
+        training_data: pd.DataFrame = None,
+    ):
         """Standard plotting routine, saving generated plots at save_folder/plots_kname"""
 
         plots_folder = os.path.join(save_folder, 'plots')
@@ -1334,38 +1341,30 @@ class PlotUtils:
             if auto_close:
                 plt.close()
 
-            # scatter plot ordered by ground truth's plaque burden
-            graph = plotter.scatter(data=data, metric=metric_i, x_axis=('Plaque Burden', 'Ground Truth'))
-            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-pb_gt_y-{metric_name}.png'), dpi=dpi, bbox_inches='tight')
-            if auto_close:
-                plt.close()
-
-            # scatter plot ordered by ground truth's plaque area
-            graph = plotter.scatter(data=data, metric=metric_i, x_axis=('Area [mm²]', 'Plaque GT'))
-            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-area_p_gt_y-{metric_name}.png'), dpi=dpi, bbox_inches='tight')
-            if auto_close:
-                plt.close()
-
             if metric_i in ["DICE", "IoU"]:
                 graph = plotter.scatter(data, metric_i, use_average=True)
                 graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
                 if auto_close:
                     plt.close()
+            
 
-                # scatter plot ordered by ground truth's plaque burden
-                graph = plotter.scatter(data=data, metric=metric_i, x_axis=('Plaque Burden', 'Ground Truth'), use_average=True)
-                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-pb_gt_y-{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
-                if auto_close:
-                    plt.close()
+        # sorted plots
+        for use_average in [True, False]:
+            avg_tag = '_avg' if use_average else ''
 
-                # scatter plot ordered by ground truth's plaque area
-                graph = plotter.scatter(data=data, metric=metric_i, x_axis=('Area [mm²]', 'Plaque GT'), use_average=True)
-                graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-area_p_gt_y-{metric_name}_avg.png'), dpi=dpi, bbox_inches='tight')
-                if auto_close:
-                    plt.close()
+            # scatter plot ordered by ground truth's plaque burden
+            graph = plotter.scatter(data=data, metric='IoU', x_axis=('Plaque Burden', 'Ground Truth'), use_average=use_average)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-pb_gt_y-iou.png'), dpi=dpi, bbox_inches='tight')
+            if auto_close:
+                plt.close()
 
-
-        # ratio plots
+            # scatter plot ordered by ground truth's plaque area
+            graph = plotter.scatter(data=data, metric='IoU', x_axis=('Area [mm²]', 'Plaque GT'), use_average=use_average)
+            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-area_p_gt_y-iou{avg_tag}.png'), dpi=dpi, bbox_inches='tight')
+            if auto_close:
+                plt.close()
+    
+        # ratio and bland-altman plots
         for metric_i in ["Lumen", "Plaque", "Vessel", "Plaque Burden"]:
             metric_name = metric_i.lower().replace(' [mm]', '').replace(' ', '_')
 
@@ -1378,7 +1377,12 @@ class PlotUtils:
             graph.get_figure().savefig(os.path.join(plots_folder, f'bland_altman_{metric_name}.png'), dpi=dpi, bbox_inches='tight')
             if auto_close:
                 plt.close()
-            
+
+        # making training plots, if available
+        if training_data is not None:
+            training_plots = plotter.training(training_data)
+            for plot_i in training_plots:
+                training_plots[plot_i].get_figure().savefig(os.path.join(plots_folder, f'{plot_i}.png'), dpi=dpi, bbox_inches='tight')
 
 
 class GraphMaker:
@@ -1722,3 +1726,106 @@ class GraphMaker:
         return graph    
 
 
+    def training(self, data):
+        """Return training plot(s). Returns a dictionary of axes."""
+
+        training = pd.DataFrame()
+
+        training["Loss"] = data["loss"]
+        training["Val. Loss"] = data["val_loss"]
+
+        if "lumen_loss" in data.columns or "vessel_loss" in data.columns:
+            multi = True
+        else:
+            multi = False
+
+        if multi:
+
+            training["Lumen Loss"] = data["lumen_loss"]
+            training["Lumen Val. Loss"] = data["val_lumen_loss"]
+
+            training["Vessel Loss"] = data["vessel_loss"]
+            training["Vessel Val. Loss"] = data["val_vessel_loss"]
+
+            training["Lumen Mean IoU"] = data["lumen_mean_io_u"]
+            training["Lumen Val. Mean IoU"] = data["val_lumen_mean_io_u"]
+
+            training["Vessel Mean IoU"] = data["vessel_mean_io_u_1"]
+            training["Vessel Val. Mean IoU"] = data["val_vessel_mean_io_u_1"]
+
+            plots = [
+                (
+                    "lumen_training_results",
+                    [
+                        "Lumen Loss",
+                        "Lumen Val. Loss",
+                        "Lumen Mean IoU",
+                        "Lumen Val. Mean IoU",
+                    ],
+                ),
+                (
+                    "vessel_training_results",
+                    [
+                        "Vessel Loss",
+                        "Vessel Val. Loss",
+                        "Vessel Mean IoU",
+                        "Vessel Val. Mean IoU",
+                    ],
+                ),
+                (
+                    "training_results",
+                    [
+                        "Loss",
+                        "Val. Loss",
+                        "Lumen Val. Mean IoU",
+                        "Vessel Val. Mean IoU",
+                    ],
+                ),
+            ]
+
+        else:
+
+            training["Mean IoU"] = data["mean_io_u"]
+            training["Val. Mean IoU"] = data["val_mean_io_u"]
+
+            plots = [
+                (
+                    "training_results",
+                    ["Loss", "Val. Loss", "Mean IoU", "Val. Mean IoU"],
+                ),
+            ]
+
+        training["Epoch"] = np.arange(1, len(training) + 1)
+        training.set_index("Epoch", inplace=True)
+
+        sns.set_theme(style="whitegrid")
+
+        out = {}
+        for plot in plots:
+            plt.figure(**self.figure_args)
+            out[plot[0]] = sns.lineplot(
+                data=training[plot[1]],
+                palette="bright",
+                markers=False,
+                dashes=False,
+            )
+            xticks = np.arange(1, len(training) + 1)
+            xticks = xticks[::int(np.ceil(len(xticks)/50))]
+            out[plot[0]].set(
+                xlim=(1, len(training)),
+                ylim=(0, 1),
+                ylabel="Metric",
+                yticks=np.linspace(0, 1, 11),
+                xticks=xticks,
+            )
+
+            # h, l = graph.get_legend_handles_labels()
+            # # plt.legend(h, l, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
+            #
+            # plt.legend(h, l, bbox_to_anchor=(1.05, 1), borderaxespad=0.0)
+
+            out[plot[0]].tick_params(axis="x", which="major", labelsize=8, rotation=0)
+            out[plot[0]].tick_params(axis="y", which="major", labelsize=8, rotation=0)
+            
+
+        return out
