@@ -1383,6 +1383,7 @@ class PlotUtils:
             training_plots = plotter.training(training_data)
             for plot_i in training_plots:
                 training_plots[plot_i].get_figure().savefig(os.path.join(plots_folder, f'{plot_i}.png'), dpi=dpi, bbox_inches='tight')
+                plt.close('all')
 
 
 class GraphMaker:
