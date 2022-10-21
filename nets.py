@@ -409,6 +409,68 @@ class NetBuilder:
             node = ly.Activation(tf.keras.activations.gelu)(node)            
 
 
+        # (conv, bn, gelu)x2
+        if node_type == 15:
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size_i,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(inputs)
+            node = ly.BatchNormalization()(node)
+            node = ly.Activation(tf.keras.activations.gelu)(node)
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size_i,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(node)
+            node = ly.BatchNormalization()(node)
+            node = ly.Activation(tf.keras.activations.gelu)(node)
+
+        # (conv, bn, gelu)x3
+        if node_type == 16:
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size_i,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(inputs)
+            node = ly.BatchNormalization()(node)
+            node = ly.Activation(tf.keras.activations.gelu)(node)
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size_i,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(node)
+            node = ly.BatchNormalization()(node)
+            node = ly.Activation(tf.keras.activations.gelu)(node)
+            node = ly.Conv2D(
+                filters=base_filters * 2 ** level,
+                kernel_size=kernel_size_i,
+                padding="same",
+                dilation_rate=dilation_rate,
+                kernel_initializer=kernel_initializer,
+                bias_initializer=bias_initializer,
+                use_bias=False,
+            )(node)
+            node = ly.BatchNormalization()(node)
+            node = ly.Activation(tf.keras.activations.gelu)(node)
+
+
         outputs = node
         print(f"node {name}: ", outputs)
         model = tf.keras.Model(inputs, outputs, name=name)
