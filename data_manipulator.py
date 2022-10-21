@@ -1354,7 +1354,7 @@ class PlotUtils:
 
             # scatter plot ordered by ground truth's plaque burden
             graph = plotter.scatter(data=data, metric='IoU', x_axis=('Plaque Burden', 'Ground Truth'), use_average=use_average)
-            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-pb_gt_y-iou.png'), dpi=dpi, bbox_inches='tight')
+            graph.get_figure().savefig(os.path.join(plots_folder, f'scatter_x-pb_gt_y-iou{avg_tag}.png'), dpi=dpi, bbox_inches='tight')
             if auto_close:
                 plt.close()
 
