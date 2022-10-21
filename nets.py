@@ -394,7 +394,7 @@ class NetBuilder:
             node = ly.Activation("relu")(node)
 
         
-        # conv, bn, relu
+        # conv, bn, gelu
         if node_type == 14:
             node = ly.Conv2D(
                 filters=base_filters * 2 ** level,
@@ -407,7 +407,7 @@ class NetBuilder:
             )(inputs)
             node = ly.BatchNormalization()(node)
             node = ly.Activation(tf.keras.activations.gelu)(node)            
-            
+
 
         outputs = node
         print(f"node {name}: ", outputs)
