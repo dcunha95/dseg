@@ -1451,7 +1451,7 @@ class GraphMaker:
         else:
             graph.set(
                 # ylim=(graph.get_ylim()[0]*1.5, graph.get_ylim()[1]*2.5),
-                ylim=(0, 12),
+                ylim=(0, 9),
             )
 
 
@@ -1692,7 +1692,7 @@ class GraphMaker:
         return graph
 
 
-    def comp_box(self, data_dict, metric):
+    def comp_box(self, data_dict, metric, set_ylim=True, showfliers=True):
             
         df = pd.DataFrame()
 
@@ -1712,10 +1712,11 @@ class GraphMaker:
 
         df['Value'] = df['Value'].astype(float)
 
-        graph = sns.boxplot(data=df, x='Class', y='Value', hue="ID", palette=self.palette)
+        graph = sns.boxplot(data=df, x='Class', y='Value', hue="ID", palette=self.palette, showfliers=showfliers, width=0.6)
 
-        self._set_ylim(graph, metric)
-        
+        if set_ylim:
+            self._set_ylim(graph, metric)
+            
         graph.tick_params(left=True, bottom=False)
         # graph.get_xaxis().set_visible(False)
         graph.set(
