@@ -1,15 +1,15 @@
 # dseg
 
-This repo contains the core toolkit for deep learning segmentation of plaque and lumen regions of Intravascular Ultrasound (IVUS) images used in[](), running on top of `tensorflow.keras`.
+This repo contains the core toolkit used in the master's thesis of the same author: [A Deep Learning Model for Semantic Segmentation of Intravascular Ultrasound Images](https://pos.ucp.br/mestrado-em-engenharia-dissertacoes-2022/).
+As the title suggests, it provides tools for deep learning segmentation of plaque and lumen regions of Intravascular Ultrasound (IVUS) images, being built on top of `tensorflow.keras`.
 
 Please note that it is not currently in development, being originally developed for the now deprecated Python 3.7.
 
 ## Usage 
 
-It provides a collection of classes (see `setup.py`) designed to allow running multiple experiments with various parameter settings being managed by Python.
+A collection of classes is provided with the objective of running multiple experiments with various hyperparameters being managed programmatically. See `setup.py` for the main interface classes. The *Example script* section provides a standard use case.
 
-You're likely here for the U-net and U-net++ constructors. If that's the case, please check the methods `dseg.nets.NetBuilder.unet` and `dseg.nets.NetBuilder.unet_pp`. The *Example script* section provides a standard use case.
-
+If you are here for the U-net and U-net++ constructors and do not wish to handle the interface layer, which is very reasonable, please check the methods `dseg.nets.NetBuilder.unet` and `dseg.nets.NetBuilder.unet_pp`. 
 ## Example script
 
 ```python
