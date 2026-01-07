@@ -1,6 +1,6 @@
 # dseg
 
-This repo contains the core toolkit used in the master's thesis of the same author: [A Deep Learning Model for Semantic Segmentation of Intravascular Ultrasound Images](https://pos.ucp.br/mestrado-em-engenharia-dissertacoes-2022/).
+This repo contains the core toolkit used in the master's thesis of the same author: [A Deep Learning Model for Semantic Segmentation of Intravascular Ultrasound Images](https://drive.google.com/file/d/1GUSx84B4wufdpOWYdGv68EWE5R6NIDig/view?usp=sharing).
 As the title suggests, it provides tools for deep learning segmentation of plaque and lumen regions of Intravascular Ultrasound (IVUS) images, being built on top of `tensorflow.keras`.
 
 Please note that it is not currently in development, being originally developed for the now deprecated Python 3.7.
